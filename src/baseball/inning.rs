@@ -35,7 +35,9 @@ impl Outs {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Default)]
 pub enum BattingPosition {
+    #[default]
     First,
     Second,
     Third,
@@ -77,11 +79,6 @@ impl BattingPosition {
     }
 }
 
-impl Default for BattingPosition {
-    fn default() -> Self {
-        BattingPosition::First // Start with leadoff hitter
-    }
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HalfInning {
@@ -131,8 +128,7 @@ impl HalfInning {
                 let outs = self.outs.add_out();
                 match outs {
                     Outs::Zero | Outs::One | Outs::Two => {
-                        self.outs = outs;
-                        HalfInningAdvance::in_progress(self)
+                        self.set_outs(outs).to_advance()
                     }
                     Outs::Three => {
                         HalfInningAdvance::Complete(HalfInningSummary::new(self.runs_scored))
@@ -143,27 +139,42 @@ impl HalfInning {
             | PlateAppearanceAdvance::HitByPitch
             | PlateAppearanceAdvance::Single
             | PlateAppearanceAdvance::Error => {
-                self.current_batter = self.current_batter.next();
-                HalfInningAdvance::in_progress(self)
+                self.to_advance()
             }
             PlateAppearanceAdvance::Double => {
-                self.current_batter = self.current_batter.next();
-                HalfInningAdvance::in_progress(self)
+                self.to_advance()
             }
             PlateAppearanceAdvance::Triple => {
-                self.current_batter = self.current_batter.next();
-                HalfInningAdvance::in_progress(self)
+                self.to_advance()
             }
             PlateAppearanceAdvance::HomeRun => {
-                self.runs_scored += 1;
-                self.current_batter = self.current_batter.next();
-                HalfInningAdvance::in_progress(self)
+                self.add_runs(1).to_advance()
             }
             PlateAppearanceAdvance::InProgress(pa) => {
                 self.current_pa = pa;
                 HalfInningAdvance::in_progress(self)
             }
         }
+    }
+
+    fn advance_batter(mut self) -> Self {
+        self.current_batter = self.current_batter.next();
+        self
+    }
+
+    fn set_outs(mut self, outs: Outs) -> Self {
+        self.outs = outs;
+        self
+    }
+
+    fn add_runs(mut self, runs: u32) -> Self {
+        self.runs_scored += runs;
+        self
+    }
+
+    fn to_advance(self) -> HalfInningAdvance {
+        let s = self.advance_batter();
+        HalfInningAdvance::in_progress(s)
     }
 }
 

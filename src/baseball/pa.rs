@@ -121,17 +121,11 @@ pub enum BallInPlay {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Default)]
 pub struct PlateAppearance {
     count: Count,
 }
 
-impl Default for PlateAppearance {
-    fn default() -> Self {
-        Self {
-            count: Count::default(),
-        }
-    }
-}
 
 impl PlateAppearance {
     pub fn new() -> Self {
