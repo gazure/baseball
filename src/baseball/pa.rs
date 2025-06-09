@@ -73,8 +73,8 @@ impl Count {
 
     fn advance_strike(self) -> CountAdvance {
         match self.strikes {
-            Strikes::Zero => CountAdvance::in_progress(Count::new(Balls::Zero, Strikes::One)),
-            Strikes::One => CountAdvance::in_progress(Count::new(Balls::Zero, Strikes::Two)),
+            Strikes::Zero => CountAdvance::in_progress(Count::new(self.balls, Strikes::One)),
+            Strikes::One => CountAdvance::in_progress(Count::new(self.balls, Strikes::Two)),
             Strikes::Two => CountAdvance::Strikeout,
         }
     }
@@ -326,39 +326,39 @@ mod tests {
     fn test_full_count_scenarios() {
         // Test a full count walk
         let pa = PlateAppearance::new();
-        let pa = pa.advance(PitchOutcome::Ball); // 1-0
+        let pa_advance = pa.advance(PitchOutcome::Ball); // 1-0
 
-        let pa = if let PlateAppearanceAdvance::InProgress(pa) = pa {
+        let pa_advance = if let PlateAppearanceAdvance::InProgress(pa) = pa_advance {
             pa.advance(PitchOutcome::Strike) // 1-1
         } else {
             panic!("Expected in-progress");
         };
 
-        let pa = if let PlateAppearanceAdvance::InProgress(pa) = pa {
+        let pa_advance = if let PlateAppearanceAdvance::InProgress(pa) = pa_advance {
             pa.advance(PitchOutcome::Ball) // 2-1
         } else {
             panic!("Expected in-progress");
         };
 
-        let pa = if let PlateAppearanceAdvance::InProgress(pa) = pa {
+        let pa_advance = if let PlateAppearanceAdvance::InProgress(pa) = pa_advance {
             pa.advance(PitchOutcome::Strike) // 2-2
         } else {
             panic!("Expected in-progress");
         };
 
-        let pa = if let PlateAppearanceAdvance::InProgress(pa) = pa {
+        let pa_advance = if let PlateAppearanceAdvance::InProgress(pa) = pa_advance {
             pa.advance(PitchOutcome::Ball) // 3-2
         } else {
             panic!("Expected in-progress");
         };
 
-        let pa = if let PlateAppearanceAdvance::InProgress(pa) = pa {
+        let final_advance = if let PlateAppearanceAdvance::InProgress(pa) = pa_advance {
             pa.advance(PitchOutcome::Ball) // Walk
         } else {
             panic!("Expected in-progress");
         };
 
-        assert!(pa.is_complete());
-        assert!(matches!(pa, PlateAppearanceAdvance::Walk));
+        assert!(final_advance.is_complete());
+        assert!(matches!(final_advance, PlateAppearanceAdvance::Walk));
     }
 }

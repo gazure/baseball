@@ -187,6 +187,10 @@ impl HalfInningSummary {
     pub fn new(runs_scored: u32) -> Self {
         HalfInningSummary { runs_scored }
     }
+
+    pub fn runs_scored(&self) -> u32 {
+        self.runs_scored
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

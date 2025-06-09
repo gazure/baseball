@@ -1,5 +1,6 @@
 mod pa;
 mod inning;
+mod game;
 
 pub use pa::{
     Count,
@@ -17,4 +18,15 @@ pub use inning::{
     BattingPosition,
     HalfInning,
     HalfInningAdvance,
+    HalfInningSummary,
+};
+
+pub use game::{
+    InningNumber,
+    GameScore,
+    GameWinner,
+    GameSummary,
+    GameState,
+    Game,
+    GameAdvance,
 };
