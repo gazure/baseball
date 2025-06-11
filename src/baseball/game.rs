@@ -213,7 +213,7 @@ impl Game {
                 if self.should_end_game() {
                     let winner = self.score.winner().expect("Game should have winner");
                     let game_summary =
-                        GameSummary::new(self.score.clone(), self.current_inning, winner);
+                        GameSummary::new(self.score, self.current_inning, winner);
                     return GameAdvance::Complete(game_summary);
                 }
 

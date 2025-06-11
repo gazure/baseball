@@ -129,11 +129,11 @@ impl PlayOutcome {
             first: PlayBaseOutcome::Runner(batter),
             second: baserunners
                 .first()
-                .map(|b| PlayBaseOutcome::Runner(b))
+                .map(PlayBaseOutcome::Runner)
                 .unwrap_or(PlayBaseOutcome::None),
             third: baserunners
                 .second()
-                .map(|b| PlayBaseOutcome::Runner(b))
+                .map(PlayBaseOutcome::Runner)
                 .unwrap_or(PlayBaseOutcome::None),
             home: Self::scored(None, None, baserunners.third(), None),
         }
@@ -145,7 +145,7 @@ impl PlayOutcome {
             second: PlayBaseOutcome::Runner(batter),
             third: baserunners
                 .first()
-                .map(|b| PlayBaseOutcome::Runner(b))
+                .map(PlayBaseOutcome::Runner)
                 .unwrap_or(PlayBaseOutcome::None),
             home: Self::scored(None, baserunners.second(), baserunners.third(), None),
         }
@@ -162,7 +162,7 @@ impl PlayOutcome {
             first: PlayBaseOutcome::None,
             second: PlayBaseOutcome::None,
             third: PlayBaseOutcome::Runner(batter),
-            home: home,
+            home,
         }
     }
 

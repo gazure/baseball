@@ -104,7 +104,7 @@ impl HalfInning {
     }
 
     fn increment_outs(self, n: u32) -> HalfInningAdvance {
-        let mut outs = self.outs.clone();
+        let mut outs = self.outs;
         for _ in 0..n {
             outs = outs.add_out();
 
@@ -205,7 +205,7 @@ impl HalfInningAdvance {
 
     pub fn half_inning(&self) -> Option<HalfInning> {
         match self {
-            HalfInningAdvance::InProgress(hi) => Some(hi.clone()),
+            HalfInningAdvance::InProgress(hi) => Some(*hi),
             HalfInningAdvance::Complete(_) => None,
         }
     }

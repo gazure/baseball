@@ -311,7 +311,7 @@ fn demo_baseball_game() {
     }
 
     advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
-    if let Some(_) = advance.game_ref() {
+    if advance.game_ref().is_some() {
         info!("  Batter #4: Out");
         info!("  Half inning complete!");
     } else {
