@@ -1,13 +1,23 @@
-use crate::baseball::pa::{PitchOutcome, PlateAppearance, PlateAppearanceAdvance};
+use tracing::info;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+use crate::{
+    baseball::{
+        baserunners::BaserunnerState,
+        lineup::BattingPosition,
+        pa::{PitchOutcome, PlateAppearance, PlateAppearanceAdvance},
+    }, Runs
+};
+
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum InningHalf {
+    #[default]
     Top,
     Bottom,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum Outs {
+    #[default]
     Zero,
     One,
     Two,
@@ -24,7 +34,7 @@ impl Outs {
         }
     }
 
-    pub fn as_number(self) -> u8 {
+    pub fn as_number(self) -> Runs {
         match self {
             Outs::Zero => 0,
             Outs::One => 1,
@@ -35,58 +45,26 @@ impl Outs {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[derive(Default)]
-pub enum BattingPosition {
-    #[default]
-    First,
-    Second,
-    Third,
-    Fourth,
-    Fifth,
-    Sixth,
-    Seventh,
-    Eighth,
-    Ninth,
-}
-
-impl BattingPosition {
-    pub fn next(self) -> BattingPosition {
-        match self {
-            BattingPosition::First => BattingPosition::Second,
-            BattingPosition::Second => BattingPosition::Third,
-            BattingPosition::Third => BattingPosition::Fourth,
-            BattingPosition::Fourth => BattingPosition::Fifth,
-            BattingPosition::Fifth => BattingPosition::Sixth,
-            BattingPosition::Sixth => BattingPosition::Seventh,
-            BattingPosition::Seventh => BattingPosition::Eighth,
-            BattingPosition::Eighth => BattingPosition::Ninth,
-            BattingPosition::Ninth => BattingPosition::First,
-        }
-    }
-
-    pub fn as_number(self) -> u8 {
-        match self {
-            BattingPosition::First => 1,
-            BattingPosition::Second => 2,
-            BattingPosition::Third => 3,
-            BattingPosition::Fourth => 4,
-            BattingPosition::Fifth => 5,
-            BattingPosition::Sixth => 6,
-            BattingPosition::Seventh => 7,
-            BattingPosition::Eighth => 8,
-            BattingPosition::Ninth => 9,
-        }
-    }
-}
-
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct HalfInning {
     half: InningHalf,
     outs: Outs,
     current_batter: BattingPosition,
     current_pa: PlateAppearance,
-    runs_scored: u32,
+    runs_scored: Runs,
+    baserunners: BaserunnerState,
+}
+
+impl Default for HalfInning {
+    fn default() -> Self {
+        HalfInning {
+            half: InningHalf::default(),
+            outs: Outs::default(),
+            current_batter: BattingPosition::default(),
+            current_pa: PlateAppearance::new(),
+            runs_scored: 0,
+            baserunners: BaserunnerState::new(),
+        }
+    }
 }
 
 impl HalfInning {
@@ -97,6 +75,7 @@ impl HalfInning {
             current_batter: starting_batter,
             current_pa: PlateAppearance::new(),
             runs_scored: 0,
+            baserunners: BaserunnerState::new(),
         }
     }
 
@@ -116,39 +95,51 @@ impl HalfInning {
         &self.current_pa
     }
 
-    pub fn runs_scored(&self) -> u32 {
+    pub fn runs_scored(&self) -> Runs {
         self.runs_scored
+    }
+
+    pub fn baserunners(&self) -> BaserunnerState {
+        self.baserunners
+    }
+
+    fn increment_outs(self, n: u32) -> HalfInningAdvance {
+        let mut outs = self.outs.clone();
+        for _ in 0..n {
+            outs = outs.add_out();
+
+            if matches!(outs, Outs::Three) {
+                info!("Inning completed with {:?} outs", outs);
+                info!("Halfinning: {:?}", self);
+                return HalfInningAdvance::Complete(HalfInningSummary::new(self.runs_scored));
+            }
+        }
+        info!("Halfinning: {:?}, new outs: {:?}", self, outs);
+        self.set_outs(outs).advance_batter()
     }
 
     pub fn advance(mut self, outcome: PitchOutcome) -> HalfInningAdvance {
         let pa = self.current_pa.advance(outcome);
 
         match pa {
-            PlateAppearanceAdvance::Out | PlateAppearanceAdvance::Strikeout => {
-                let outs = self.outs.add_out();
-                match outs {
-                    Outs::Zero | Outs::One | Outs::Two => {
-                        self.set_outs(outs).to_advance()
-                    }
-                    Outs::Three => {
-                        HalfInningAdvance::Complete(HalfInningSummary::new(self.runs_scored))
-                    }
-                }
+            PlateAppearanceAdvance::Strikeout => self.increment_outs(1),
+            PlateAppearanceAdvance::InPlay(outcome) => {
+                let outs = outcome.outs();
+                let baserunners = outcome.baserunners();
+                let runs_scored = outcome.runs_scored();
+                self.add_runs(runs_scored).with_baserunners(baserunners).increment_outs(outs)
             }
-            PlateAppearanceAdvance::Walk
-            | PlateAppearanceAdvance::HitByPitch
-            | PlateAppearanceAdvance::Single
-            | PlateAppearanceAdvance::Error => {
-                self.to_advance()
+            PlateAppearanceAdvance::Walk => {
+                let (baserunners, runs) = self.baserunners.walk(self.current_batter);
+                self.add_runs(runs).with_baserunners(baserunners).advance_batter()
             }
-            PlateAppearanceAdvance::Double => {
-                self.to_advance()
-            }
-            PlateAppearanceAdvance::Triple => {
-                self.to_advance()
+            PlateAppearanceAdvance::HitByPitch => {
+                let (baserunners, runs) = self.baserunners.walk(self.current_batter);
+                self.add_runs(runs).with_baserunners(baserunners).advance_batter()
             }
             PlateAppearanceAdvance::HomeRun => {
-                self.add_runs(1).to_advance()
+                let runs = self.baserunners.home_run();
+                self.add_runs(runs).with_baserunners(BaserunnerState::empty()).advance_batter()
             }
             PlateAppearanceAdvance::InProgress(pa) => {
                 self.current_pa = pa;
@@ -157,38 +148,39 @@ impl HalfInning {
         }
     }
 
-    fn advance_batter(mut self) -> Self {
-        self.current_batter = self.current_batter.next();
-        self
-    }
-
     fn set_outs(mut self, outs: Outs) -> Self {
         self.outs = outs;
         self
     }
 
-    fn add_runs(mut self, runs: u32) -> Self {
-        self.runs_scored += runs;
+    fn advance_batter(mut self) -> HalfInningAdvance {
+        self.current_batter = self.current_batter.next();
+        self.current_pa = PlateAppearance::new();
+        HalfInningAdvance::in_progress(self)
+    }
+
+    fn add_runs(mut self, runs_scored: Runs) -> Self {
+        self.runs_scored += runs_scored;
         self
     }
 
-    fn to_advance(self) -> HalfInningAdvance {
-        let s = self.advance_batter();
-        HalfInningAdvance::in_progress(s)
+    fn with_baserunners(mut self, baserunners: BaserunnerState) -> Self {
+        self.baserunners = baserunners;
+        self
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HalfInningSummary {
-    runs_scored: u32,
+    runs_scored: Runs,
 }
 
 impl HalfInningSummary {
-    pub fn new(runs_scored: u32) -> Self {
+    pub fn new(runs_scored: Runs) -> Self {
         HalfInningSummary { runs_scored }
     }
 
-    pub fn runs_scored(&self) -> u32 {
+    pub fn runs_scored(&self) -> Runs {
         self.runs_scored
     }
 }
@@ -200,11 +192,25 @@ pub enum HalfInningAdvance {
 }
 
 impl HalfInningAdvance {
+    pub fn advance(self, pitch: PitchOutcome) -> HalfInningAdvance {
+        match self {
+            HalfInningAdvance::InProgress(hi) => hi.advance(pitch),
+            HalfInningAdvance::Complete(_) => self,
+        }
+    }
+
     pub fn is_complete(&self) -> bool {
         matches!(self, HalfInningAdvance::Complete(_))
     }
 
-    pub fn half_inning(self) -> Option<HalfInning> {
+    pub fn half_inning(&self) -> Option<HalfInning> {
+        match self {
+            HalfInningAdvance::InProgress(hi) => Some(hi.clone()),
+            HalfInningAdvance::Complete(_) => None,
+        }
+    }
+
+    pub fn half_inning_ref(&self) -> Option<&HalfInning> {
         match self {
             HalfInningAdvance::InProgress(hi) => Some(hi),
             HalfInningAdvance::Complete(_) => None,
@@ -219,7 +225,7 @@ impl HalfInningAdvance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::baseball::pa::{BallInPlay, PitchOutcome};
+    use crate::baseball::{baserunners::PlayOutcome, pa::PitchOutcome};
 
     #[test]
     fn test_batting_position_as_number() {
@@ -288,7 +294,7 @@ mod tests {
         let batting_pos = BattingPosition::First;
         let half_inning = HalfInning::new(InningHalf::Top, batting_pos);
 
-        let result = half_inning.advance(PitchOutcome::InPlay(BallInPlay::HomeRun));
+        let result = half_inning.advance(PitchOutcome::HomeRun);
         let half_inning = result.half_inning().expect("unexpected inning end");
 
         assert_eq!(half_inning.runs_scored(), 1);
@@ -300,13 +306,14 @@ mod tests {
         let batting_pos = BattingPosition::First;
         let half_inning = HalfInning::new(InningHalf::Top, batting_pos);
 
-        let advance = half_inning.advance(PitchOutcome::InPlay(BallInPlay::Out))
+        let advance = half_inning
+            .advance(PitchOutcome::InPlay(PlayOutcome::groundout()))
             .half_inning()
             .expect("unexpected inning end")
-            .advance(PitchOutcome::InPlay(BallInPlay::Out))
+            .advance(PitchOutcome::InPlay(PlayOutcome::groundout()))
             .half_inning()
             .expect("unexpected inning end")
-            .advance(PitchOutcome::InPlay(BallInPlay::Out));
+            .advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
 
         assert!(advance.is_complete());
     }

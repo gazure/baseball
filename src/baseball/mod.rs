@@ -1,32 +1,19 @@
-mod pa;
-mod inning;
+mod baserunners;
+mod core;
 mod game;
+mod inning;
+mod lineup;
+mod pa;
 
+pub use core::Runs;
+
+pub use baserunners::{
+    Base, BaserunnerState, HomePlateOutcome,
+    PlayBaseOutcome, PlayOutcome,
+};
+pub use game::{Game, GameAdvance, GameScore, GameState, GameSummary, GameWinner, InningNumber};
+pub use inning::{HalfInning, HalfInningAdvance, HalfInningSummary, InningHalf, Outs};
+pub use lineup::BattingPosition;
 pub use pa::{
-    Count,
-    Strikes,
-    Balls,
-    PitchOutcome,
-    BallInPlay,
-    PlateAppearance,
-    PlateAppearanceAdvance
-};
-
-pub use inning::{
-    InningHalf,
-    Outs,
-    BattingPosition,
-    HalfInning,
-    HalfInningAdvance,
-    HalfInningSummary,
-};
-
-pub use game::{
-    InningNumber,
-    GameScore,
-    GameWinner,
-    GameSummary,
-    GameState,
-    Game,
-    GameAdvance,
+    BallInPlay, Balls, Count, PitchOutcome, PlateAppearance, PlateAppearanceAdvance, Strikes,
 };
