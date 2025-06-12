@@ -1,5 +1,3 @@
-use tracing::info;
-
 use crate::{
     Runs,
     baseball::{
@@ -147,6 +145,22 @@ pub enum GameState {
     InningEnd(InningHalf),
     Complete,
 }
+impl GameState {
+    pub fn is_bottom(&self) -> bool {
+        match self {
+            GameState::Inning(InningHalf::Bottom) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_top(&self) -> bool {
+        match self {
+            GameState::Inning(InningHalf::Top) => true,
+            _ => false,
+        }
+    }
+
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Game {
@@ -203,14 +217,24 @@ impl Game {
         match self.current_half_inning.advance(outcome) {
             HalfInningAdvance::InProgress(half_inning) => {
                 self.current_half_inning = half_inning;
+                let pending_runs = self.current_half_inning.runs_scored();
+                if self.is_bottom_of_ninth() && self.should_end_game(pending_runs) {
+                    self.complete_half_inning(pending_runs);
+                    let winner = self.score.winner().expect("Game should have winner");
+                    let game_summary =
+                        GameSummary::new(self.score, self.current_inning, winner);
+                    return GameAdvance::Complete(game_summary);
+                }
+
                 GameAdvance::InProgress(self)
             }
+
             HalfInningAdvance::Complete(summary) => {
                 // Half inning completed, update score and advance
                 self.complete_half_inning(summary.runs_scored());
 
                 // Check if game should end
-                if self.should_end_game() {
+                if self.should_end_game(0) {
                     let winner = self.score.winner().expect("Game should have winner");
                     let game_summary =
                         GameSummary::new(self.score, self.current_inning, winner);
@@ -224,14 +248,14 @@ impl Game {
         }
     }
 
-    fn complete_half_inning(&mut self, runs_scored: Runs) {
+    fn complete_half_inning(&mut self, pending_runs: Runs) {
         match self.state {
             GameState::Inning(InningHalf::Top) => {
-                self.score = self.score.add_away_runs(runs_scored);
+                self.score = self.score.add_away_runs(pending_runs);
                 self.state = GameState::InningEnd(InningHalf::Top)
             }
             GameState::Inning(InningHalf::Bottom) => {
-                self.score = self.score.add_home_runs(runs_scored);
+                self.score = self.score.add_home_runs(pending_runs);
                 self.state = GameState::InningEnd(InningHalf::Bottom);
             }
             GameState::InningEnd(_) | GameState::Complete => {
@@ -240,7 +264,7 @@ impl Game {
         }
     }
 
-    fn should_end_game(&self) -> bool {
+    fn should_end_game(&self, pending_runs: Runs) -> bool {
         // The state represents the NEXT half inning to be played after completing a half
         match self.current_inning {
             // Regular innings 1-8: never end
@@ -266,7 +290,10 @@ impl Game {
                         // Game ends if any team is winning
                         self.score.home() != self.score.away()
                     }
-                    GameState::Inning(_) => false,
+                    GameState::Inning(InningHalf::Top) => false,
+                    GameState::Inning(InningHalf::Bottom) => {
+                        self.score().home() + pending_runs > self.score().away()
+                    },
                     GameState::Complete => true,
                 }
             }
@@ -305,7 +332,6 @@ impl Game {
 
         self.current_half_inning = HalfInning::new(half, batting_order);
         self.state = GameState::Inning(half);
-        info!("Next Half Game State: {:?}", self);
         self
     }
 
@@ -334,6 +360,12 @@ impl Game {
         };
 
         format!("{} of the {}", half_text, inning_text)
+    }
+
+
+
+    fn is_bottom_of_ninth(&self) -> bool {
+        self.current_inning == InningNumber::Ninth && self.state.is_bottom()
     }
 }
 
@@ -498,13 +530,19 @@ mod tests {
         game.score = GameScore::new().add_home_runs(5).add_away_runs(3);
 
         // Home team ahead, game should end
-        assert!(game.should_end_game());
+        game.complete_half_inning(0);
+        assert!(game.should_end_game(0));
 
         // Test tie game - should not end
         game.score = GameScore::new().add_home_runs(3).add_away_runs(3);
-        assert!(!game.should_end_game());
+        assert!(!game.should_end_game(0));
+
+        // Test home team walk-off run
+        game.state = GameState::Inning(InningHalf::Bottom);
+        game.score = GameScore::new().add_home_runs(3).add_away_runs(3);
+        assert!(game.should_end_game(1));
 
         game.current_inning = InningNumber::Eighth;
-        assert!(!game.should_end_game())
+        assert!(!game.should_end_game(0))
     }
 }

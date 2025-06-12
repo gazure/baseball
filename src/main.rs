@@ -1,11 +1,16 @@
 use baseball::*;
-use tracing::info;
+use tracing::{error, info};
 
 fn main() {
     tracing_subscriber::fmt()
         .with_file(true)
         .with_line_number(true)
         .with_timer(tracing_subscriber::fmt::time::uptime())
+        .with_max_level(if std::env::var("DEBUG").is_ok() {
+            tracing::Level::DEBUG
+        } else {
+            tracing::Level::INFO
+        })
         .init();
     info!("⚾ Baseball Game Type System Demo ⚾\n");
 
@@ -87,7 +92,7 @@ fn demo_half_inning() {
     );
 
     // Batter 1: Quick out
-    info!("\n  Batter #1 steps up...");
+    info!("  Batter #1 steps up...");
     let mut advance = half_inning.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
     if let Some(half_inning) = advance.half_inning_ref() {
         info!("    Result: Out");
@@ -98,7 +103,7 @@ fn demo_half_inning() {
         );
 
         // Batter 2: Home run
-        info!("\n  Batter #2 steps up...");
+        info!("  Batter #2 steps up...");
         advance = advance.advance(PitchOutcome::HomeRun);
         if let Some(half_inning2) = advance.half_inning_ref() {
             info!("    Result: Home Run! 🎉");
@@ -124,14 +129,14 @@ fn demo_batting_position_api() {
     info!("  Cleanup hitter: #{}", cleanup.as_number());
     info!("  Nine hole: #{}", nine_hole.as_number());
 
-    info!("\nBatting order progression:");
+    info!("Batting order progression:");
     let mut current = BattingPosition::Seventh;
     for i in 1..=5 {
         info!("  Batter {}: #{}", i, current.as_number());
         current = current.next();
     }
 
-    info!("\nNo more .unwrap() calls needed! 🎉");
+    info!("No more .unwrap() calls needed! 🎉");
 }
 
 fn demo_baserunner_tracking() {
@@ -147,7 +152,7 @@ fn demo_baserunner_tracking() {
     let mut advance = HalfInningAdvance::InProgress(half_inning);
 
     // Batter 1: Single
-    info!("\n🏏 Batter #1: Single");
+    info!("🏏 Batter #1: Single");
     advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::single(
         half_inning.baserunners(),
         half_inning.current_batter(),
@@ -161,7 +166,7 @@ fn demo_baserunner_tracking() {
 
     // Batter 2: Walk (forces runner)
     // Batter 2: Walk (4 balls)
-    info!("\n🏏 Batter #2: Walk (4 balls)");
+    info!("🏏 Batter #2: Walk (4 balls)");
     advance = advance.advance(PitchOutcome::Ball);
     if advance.is_complete() {
         return;
@@ -183,7 +188,7 @@ fn demo_baserunner_tracking() {
     }
 
     // Batter 3: Double (runners advance)
-    info!("\n🏏 Batter #3: Double");
+    info!("🏏 Batter #3: Double");
     advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::double(
         half_inning.baserunners(),
         half_inning.current_batter(),
@@ -196,7 +201,7 @@ fn demo_baserunner_tracking() {
     }
 
     // Batter 4: Triple (clears bases)
-    info!("\n🏏 Batter #4: Triple");
+    info!("🏏 Batter #4: Triple");
     advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::triple(
         half_inning.baserunners(),
         half_inning.current_batter(),
@@ -208,7 +213,7 @@ fn demo_baserunner_tracking() {
     }
 
     // Batter 5: Home run
-    info!("\n🏏 Batter #5: Home Run");
+    info!("🏏 Batter #5: Home Run");
     advance = advance.advance(PitchOutcome::HomeRun);
     if let Some(hi) = advance.half_inning() {
         print_baserunner_state(hi);
@@ -217,7 +222,7 @@ fn demo_baserunner_tracking() {
         return;
     }
 
-    info!("\n🎯 Baserunner tracking complete!");
+    info!("🎯 Baserunner tracking complete!");
     info!("✅ Type-safe advancement rules enforced");
     info!("✅ Automatic run scoring calculation");
     info!("✅ Proper force situations handled");
@@ -260,13 +265,13 @@ fn demo_baseball_game() {
     );
 
     // Simulate first inning
-    info!("\n⚾ Simulating game action...");
+    info!("⚾ Simulating game action...");
 
     // Start with the advance wrapper
     let mut advance = GameAdvance::InProgress(game);
 
     // Top 1st: Quick three outs
-    info!("\n🔝 Top 1st Inning:");
+    info!("🔝 Top 1st Inning:");
     for batter in 1..=3 {
         advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
         if let Some(_game) = advance.game_ref() {
@@ -283,7 +288,7 @@ fn demo_baseball_game() {
     }
 
     // Bottom 1st: Home team scores
-    info!("\n🔽 Bottom 1st Inning:");
+    info!("🔽 Bottom 1st Inning:");
 
     // First batter: Home run
     advance = advance.advance(PitchOutcome::HomeRun);
@@ -319,7 +324,7 @@ fn demo_baseball_game() {
     }
 
     if let Some(_game) = advance.game_ref() {
-        info!("\n📊 After 1 inning:");
+        info!("📊 After 1 inning:");
         info!("  {}", _game.inning_description());
         info!(
             "  Score: Away {} - Home {}",
@@ -329,7 +334,7 @@ fn demo_baseball_game() {
     }
 
     // Fast forward through several innings
-    info!("\n⏭️  Fast forwarding through innings 2-8...");
+    info!("⏭️  Fast forwarding through innings 2-8...");
 
     while let Some(game) = advance.game_ref() {
         if game.current_inning().as_number() >= 9 {
@@ -380,10 +385,10 @@ fn demo_baseball_game() {
     }
 
     // 9th inning drama
-    info!("\n🎯 9th Inning - Game on the line!");
+    info!("🎯 9th Inning - Game on the line!");
 
     // Top 9th: Away team scores 2 runs
-    info!("\n🔝 Top 9th:");
+    info!("🔝 Top 9th:");
     advance = advance.advance(PitchOutcome::HomeRun);
     if advance.game_ref().is_some() {
         info!("  Batter #1: HOME RUN!");
@@ -399,7 +404,7 @@ fn demo_baseball_game() {
     }
 
     // Need two more outs to complete top 9th
-    advance = advance.advance(PitchOutcome::HomeRun);
+    advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
     if advance.game_ref().is_some() {
         info!("  Batter #3: Out");
     } else {
@@ -426,12 +431,29 @@ fn demo_baseball_game() {
     }
 
     // Bottom 9th: Walk-off opportunity
-    info!("\n🔽 Bottom 9th - Walk-off situation!");
+    info!("🔽 Bottom 9th - Walk-off situation!");
+    let game = advance.clone().game().unwrap();
+
+    advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::single(
+        game.current_half_inning().baserunners(),
+        game.current_half_inning().current_batter(),
+    )));
+
+    if let Some(game) = advance.game_ref() {
+        info!("  Batter #1: Single!");
+        info!(
+            "  Score: Away {} - Home {}",
+            game.score().away(),
+            game.score().home()
+        );
+    } else {
+        return;
+    }
 
     // Home team walk-off home run
     advance = advance.advance(PitchOutcome::HomeRun);
     if let Some(game) = advance.game_ref() {
-        info!("  Batter #1: WALK-OFF HOME RUN! 🎆");
+        error!("  Batter #1: WALK-OFF HOME RUN! 🎆, but game did not end");
         info!(
             "  Score: Away {} - Home {}",
             game.score().away(),
@@ -440,7 +462,7 @@ fn demo_baseball_game() {
         info!("  Type-safe baseball game simulation complete! ⚾");
     } else if let Some(summary) = advance.summary_ref() {
         info!("  Batter #1: WALK-OFF HOME RUN! GAME OVER! 🎆");
-        info!("\n🏁 FINAL SCORE:");
+        info!("🏁 FINAL SCORE:");
         info!("  Away: {}", summary.final_score().away());
         info!("  Home: {}", summary.final_score().home());
         info!("  Winner: {:?} team!", summary.winner());
@@ -449,12 +471,12 @@ fn demo_baseball_game() {
         return;
     }
 
-    info!("\n🎊 TYPE-SAFE BASEBALL SYSTEM COMPLETE! 🎊");
+    info!("🎊 TYPE-SAFE BASEBALL SYSTEM COMPLETE! 🎊");
     print_accomplishments();
 }
 
 fn print_accomplishments() {
-    info!("\n📋 What we've accomplished:");
+    info!("📋 What we've accomplished:");
     info!("  ✅ Type-safe plate appearances with counts, outcomes");
     info!("  ✅ Type-safe half innings with outs, batting order, runs");
     info!("  ✅ Type-safe full games with 18+ half innings");
@@ -467,5 +489,5 @@ fn print_accomplishments() {
     info!("  ✅ Type-safe baserunner tracking and advancement");
     info!("  ✅ Automatic run calculation from baserunner movements");
     info!("  ✅ Comprehensive test coverage (36 tests passing)");
-    info!("\n🏆 Ready for expansion: detailed plays, player stats, game AI!");
+    info!("🏆 Ready for expansion: detailed plays, player stats, game AI!");
 }

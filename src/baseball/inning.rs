@@ -1,11 +1,12 @@
-use tracing::info;
+use tracing::debug;
 
 use crate::{
+    Runs,
     baseball::{
         baserunners::BaserunnerState,
         lineup::BattingPosition,
         pa::{PitchOutcome, PlateAppearance, PlateAppearanceAdvance},
-    }, Runs
+    },
 };
 
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
@@ -109,12 +110,11 @@ impl HalfInning {
             outs = outs.add_out();
 
             if matches!(outs, Outs::Three) {
-                info!("Inning completed with {:?} outs", outs);
-                info!("Halfinning: {:?}", self);
+                debug!("Inning over, runs scored: {}", self.runs_scored);
                 return HalfInningAdvance::Complete(HalfInningSummary::new(self.runs_scored));
             }
         }
-        info!("Halfinning: {:?}, new outs: {:?}", self, outs);
+
         self.set_outs(outs).advance_batter()
     }
 
@@ -127,19 +127,29 @@ impl HalfInning {
                 let outs = outcome.outs();
                 let baserunners = outcome.baserunners();
                 let runs_scored = outcome.runs_scored();
-                self.add_runs(runs_scored).with_baserunners(baserunners).increment_outs(outs)
+                self
+                    .add_runs(runs_scored)
+                    .with_baserunners(baserunners)
+                    .increment_outs(outs)
             }
             PlateAppearanceAdvance::Walk => {
                 let (baserunners, runs) = self.baserunners.walk(self.current_batter);
-                self.add_runs(runs).with_baserunners(baserunners).advance_batter()
+                self.add_runs(runs)
+                    .with_baserunners(baserunners)
+                    .advance_batter()
             }
             PlateAppearanceAdvance::HitByPitch => {
                 let (baserunners, runs) = self.baserunners.walk(self.current_batter);
-                self.add_runs(runs).with_baserunners(baserunners).advance_batter()
+                self.add_runs(runs)
+                    .with_baserunners(baserunners)
+                    .advance_batter()
             }
             PlateAppearanceAdvance::HomeRun => {
                 let runs = self.baserunners.home_run();
-                self.add_runs(runs).with_baserunners(BaserunnerState::empty()).advance_batter()
+                debug!("Home run scored: {runs}");
+                self.add_runs(runs)
+                    .with_baserunners(BaserunnerState::empty())
+                    .advance_batter()
             }
             PlateAppearanceAdvance::InProgress(pa) => {
                 self.current_pa = pa;
@@ -161,6 +171,7 @@ impl HalfInning {
 
     fn add_runs(mut self, runs_scored: Runs) -> Self {
         self.runs_scored += runs_scored;
+        debug!("Runs scored: {runs_scored}");
         self
     }
 
