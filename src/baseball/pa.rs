@@ -159,22 +159,22 @@ impl PlateAppearance {
         Self { count }
     }
 
-    pub fn advance(self, outcome: PitchOutcome) -> PlateAppearanceAdvance {
+    pub fn advance(self, outcome: PitchOutcome) -> PlateAppearanceResult {
         match outcome {
             PitchOutcome::Ball | PitchOutcome::Strike | PitchOutcome::Foul => {
                 let count_advance = self.count.advance(outcome);
 
                 match count_advance {
                     CountAdvance::InProgress(count) => {
-                        PlateAppearanceAdvance::InProgress(PlateAppearance::with_count(count))
+                        PlateAppearanceResult::InProgress(PlateAppearance::with_count(count))
                     }
-                    CountAdvance::Strikeout => PlateAppearanceAdvance::Strikeout,
-                    CountAdvance::Walk => PlateAppearanceAdvance::Walk,
+                    CountAdvance::Strikeout => PlateAppearanceResult::Strikeout,
+                    CountAdvance::Walk => PlateAppearanceResult::Walk,
                 }
             }
-            PitchOutcome::InPlay(outcome) => PlateAppearanceAdvance::InPlay(outcome),
-            PitchOutcome::HomeRun => PlateAppearanceAdvance::HomeRun,
-            PitchOutcome::HitByPitch => PlateAppearanceAdvance::HitByPitch,
+            PitchOutcome::InPlay(outcome) => PlateAppearanceResult::InPlay(outcome),
+            PitchOutcome::HomeRun => PlateAppearanceResult::HomeRun,
+            PitchOutcome::HitByPitch => PlateAppearanceResult::HitByPitch,
         }
     }
 
@@ -184,7 +184,7 @@ impl PlateAppearance {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum PlateAppearanceAdvance {
+pub enum PlateAppearanceResult {
     InProgress(PlateAppearance),
     InPlay(PlayOutcome),
     Walk,
@@ -193,35 +193,32 @@ pub enum PlateAppearanceAdvance {
     HomeRun,
 }
 
-impl PlateAppearanceAdvance {
-    pub fn advance(self, outcome: PitchOutcome) -> PlateAppearanceAdvance {
+impl PlateAppearanceResult {
+    pub fn advance(self, outcome: PitchOutcome) -> PlateAppearanceResult {
         match self {
-            PlateAppearanceAdvance::InProgress(pa) => pa.advance(outcome),
+            PlateAppearanceResult::InProgress(pa) => pa.advance(outcome),
             _ => self, // Already complete, ignore the pitch
         }
     }
 
-    pub fn is_complete(&self) -> bool {
+    pub fn is_in_progress(self) -> bool {
+        !self.is_complete()
+    }
+
+    pub fn is_complete(self) -> bool {
         match self {
-            PlateAppearanceAdvance::InProgress(_) => false,
-            PlateAppearanceAdvance::Walk => true,
-            PlateAppearanceAdvance::Strikeout => true,
-            PlateAppearanceAdvance::InPlay(_) => true,
-            PlateAppearanceAdvance::HitByPitch => true,
-            PlateAppearanceAdvance::HomeRun => true,
+            PlateAppearanceResult::InProgress(_) => false,
+            PlateAppearanceResult::Walk => true,
+            PlateAppearanceResult::Strikeout => true,
+            PlateAppearanceResult::InPlay(_) => true,
+            PlateAppearanceResult::HitByPitch => true,
+            PlateAppearanceResult::HomeRun => true,
         }
     }
 
     pub fn plate_appearance(self) -> Option<PlateAppearance> {
         match self {
-            PlateAppearanceAdvance::InProgress(pa) => Some(pa),
-            _ => None,
-        }
-    }
-
-    pub fn plate_appearance_ref(&self) -> Option<&PlateAppearance> {
-        match self {
-            PlateAppearanceAdvance::InProgress(pa) => Some(pa),
+            PlateAppearanceResult::InProgress(pa) => Some(pa),
             _ => None,
         }
     }
@@ -257,7 +254,7 @@ mod tests {
         let pa = PlateAppearance::new();
         let pa = pa.advance(PitchOutcome::Ball);
 
-        if let PlateAppearanceAdvance::InProgress(pa) = pa {
+        if let PlateAppearanceResult::InProgress(pa) = pa {
             assert_eq!(pa.count().balls(), Balls::One);
             assert_eq!(pa.count().strikes(), Strikes::Zero);
         } else {
@@ -270,7 +267,7 @@ mod tests {
         let pa = PlateAppearance::new();
         let pa = pa.advance(PitchOutcome::Strike);
 
-        if let PlateAppearanceAdvance::InProgress(pa) = pa {
+        if let PlateAppearanceResult::InProgress(pa) = pa {
             assert_eq!(pa.count().balls(), Balls::Zero);
             assert_eq!(pa.count().strikes(), Strikes::One);
         } else {
@@ -283,7 +280,7 @@ mod tests {
         let pa = PlateAppearance::new();
         let pa = pa.advance(PitchOutcome::Foul);
 
-        if let PlateAppearanceAdvance::InProgress(pa) = pa {
+        if let PlateAppearanceResult::InProgress(pa) = pa {
             assert_eq!(pa.count().balls(), Balls::Zero);
             assert_eq!(pa.count().strikes(), Strikes::One);
         } else {
@@ -297,7 +294,7 @@ mod tests {
         let pa = PlateAppearance::with_count(count);
         let pa = pa.advance(PitchOutcome::Foul);
 
-        if let PlateAppearanceAdvance::InProgress(pa) = pa {
+        if let PlateAppearanceResult::InProgress(pa) = pa {
             assert_eq!(pa.count().balls(), Balls::Two);
             assert_eq!(pa.count().strikes(), Strikes::Two);
         } else {
@@ -312,7 +309,7 @@ mod tests {
         let pa = pa.advance(PitchOutcome::Ball);
 
         assert!(pa.is_complete());
-        assert!(matches!(pa, PlateAppearanceAdvance::Walk));
+        assert!(matches!(pa, PlateAppearanceResult::Walk));
     }
 
     #[test]
@@ -322,7 +319,7 @@ mod tests {
         let pa = pa.advance(PitchOutcome::Strike);
 
         assert!(pa.is_complete());
-        assert!(matches!(pa, PlateAppearanceAdvance::Strikeout));
+        assert!(matches!(pa, PlateAppearanceResult::Strikeout));
     }
 
     #[test]
@@ -331,7 +328,7 @@ mod tests {
         let pa = pa.advance(PitchOutcome::HitByPitch);
 
         assert!(pa.is_complete());
-        assert!(matches!(pa, PlateAppearanceAdvance::HitByPitch));
+        assert!(matches!(pa, PlateAppearanceResult::HitByPitch));
     }
 
     #[test]
@@ -343,7 +340,7 @@ mod tests {
         )));
 
         assert!(pa.is_complete());
-        if let PlateAppearanceAdvance::InPlay(outcome) = pa {
+        if let PlateAppearanceResult::InPlay(outcome) = pa {
             assert_eq!(
                 outcome.first(),
                 PlayBaseOutcome::Runner(BattingPosition::First)
@@ -360,7 +357,7 @@ mod tests {
         let pa = pa.advance(PitchOutcome::HomeRun);
 
         assert!(pa.is_complete());
-        assert!(matches!(pa, PlateAppearanceAdvance::HomeRun));
+        assert!(matches!(pa, PlateAppearanceResult::HomeRun));
     }
 
     #[test]
@@ -369,37 +366,69 @@ mod tests {
         let pa = PlateAppearance::new();
         let pa_advance = pa.advance(PitchOutcome::Ball); // 1-0
 
-        let pa_advance = if let PlateAppearanceAdvance::InProgress(pa) = pa_advance {
+        let pa_advance = if let PlateAppearanceResult::InProgress(pa) = pa_advance {
             pa.advance(PitchOutcome::Strike) // 1-1
         } else {
             panic!("Expected in-progress");
         };
 
-        let pa_advance = if let PlateAppearanceAdvance::InProgress(pa) = pa_advance {
+        let pa_advance = if let PlateAppearanceResult::InProgress(pa) = pa_advance {
             pa.advance(PitchOutcome::Ball) // 2-1
         } else {
             panic!("Expected in-progress");
         };
 
-        let pa_advance = if let PlateAppearanceAdvance::InProgress(pa) = pa_advance {
+        let pa_advance = if let PlateAppearanceResult::InProgress(pa) = pa_advance {
             pa.advance(PitchOutcome::Strike) // 2-2
         } else {
             panic!("Expected in-progress");
         };
 
-        let pa_advance = if let PlateAppearanceAdvance::InProgress(pa) = pa_advance {
+        let pa_advance = if let PlateAppearanceResult::InProgress(pa) = pa_advance {
             pa.advance(PitchOutcome::Ball) // 3-2
         } else {
             panic!("Expected in-progress");
         };
 
-        let final_advance = if let PlateAppearanceAdvance::InProgress(pa) = pa_advance {
+        let final_advance = if let PlateAppearanceResult::InProgress(pa) = pa_advance {
             pa.advance(PitchOutcome::Ball) // Walk
         } else {
             panic!("Expected in-progress");
         };
 
         assert!(final_advance.is_complete());
-        assert!(matches!(final_advance, PlateAppearanceAdvance::Walk));
+        assert!(matches!(final_advance, PlateAppearanceResult::Walk));
+    }
+
+    #[test]
+    fn demo_plate_appearance() {
+        // info!("Simulating a full count walk...");
+
+        let pa = PlateAppearance::new();
+        let pitches = [
+            ("Ball", PitchOutcome::Ball, Count::new(Balls::One, Strikes::Zero)),
+            ("Strike", PitchOutcome::Strike, Count::new(Balls::One, Strikes::One)),
+            ("Ball", PitchOutcome::Ball, Count::new(Balls::Two, Strikes::One)),
+            ("Strike", PitchOutcome::Strike, Count::new(Balls::Two, Strikes::Two)),
+            ("Ball", PitchOutcome::Ball, Count::new(Balls::Three, Strikes::Two)),
+            ("Foul ball", PitchOutcome::Foul, Count::new(Balls::Three, Strikes::Two)),
+            ("Foul ball", PitchOutcome::Foul, Count::new(Balls::Three, Strikes::Two)),
+            ("Ball", PitchOutcome::Ball, Count::default()),
+        ];
+
+        let mut advance = PlateAppearanceResult::InProgress(pa);
+
+        for (_, pitch, count) in pitches.into_iter() {
+            // info!("  Pitch {}: {}", i + 1, desc);
+
+            advance = advance.advance(pitch);
+
+            if let Some(pa) = advance.plate_appearance() {
+                assert_eq!(pa.count(), count, "Count mismatch");
+            } else {
+                assert_eq!(advance, PlateAppearanceResult::Walk, "expected walk");
+                break;
+            }
+        }
     }
 }

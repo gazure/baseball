@@ -60,18 +60,18 @@ fn demo_plate_appearance() {
         ("Ball", PitchOutcome::Ball),
     ];
 
-    let mut advance = PlateAppearanceAdvance::InProgress(pa);
+    let mut advance = PlateAppearanceResult::InProgress(pa);
 
     for (i, (desc, pitch)) in pitches.iter().enumerate() {
         info!("  Pitch {}: {}", i + 1, desc);
 
-        if let Some(pa) = advance.plate_appearance_ref() {
+        if let Some(pa) = advance.plate_appearance() {
             info!("    Before: {}", pa.count());
         }
 
         advance = advance.advance(*pitch);
 
-        if let Some(pa) = advance.plate_appearance_ref() {
+        if let Some(pa) = advance.plate_appearance() {
             info!("    After: {}", pa.count());
         } else {
             info!("    Result: {:?} ✅", advance);
@@ -149,7 +149,7 @@ fn demo_baserunner_tracking() {
     print_baserunner_state(half_inning);
 
     // Start with the advance wrapper
-    let mut advance = HalfInningAdvance::InProgress(half_inning);
+    let mut advance = HalfInningResult::InProgress(half_inning);
 
     // Batter 1: Single
     info!("🏏 Batter #1: Single");
@@ -268,7 +268,7 @@ fn demo_baseball_game() {
     info!("⚾ Simulating game action...");
 
     // Start with the advance wrapper
-    let mut advance = GameAdvance::InProgress(game);
+    let mut advance = GameResult::InProgress(game);
 
     // Top 1st: Quick three outs
     info!("🔝 Top 1st Inning:");

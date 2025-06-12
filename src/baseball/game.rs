@@ -1,7 +1,7 @@
 use crate::{
     Runs,
     baseball::{
-        inning::{HalfInning, HalfInningAdvance, InningHalf},
+        inning::{HalfInning, HalfInningResult, InningHalf},
         lineup::BattingPosition,
         pa::PitchOutcome,
     },
@@ -147,17 +147,11 @@ pub enum GameState {
 }
 impl GameState {
     pub fn is_bottom(&self) -> bool {
-        match self {
-            GameState::Inning(InningHalf::Bottom) => true,
-            _ => false,
-        }
+        matches!(self, GameState::Inning(InningHalf::Bottom))
     }
 
     pub fn is_top(&self) -> bool {
-        match self {
-            GameState::Inning(InningHalf::Top) => true,
-            _ => false,
-        }
+        matches!(self, GameState::Inning(InningHalf::Top))
     }
 
 }
@@ -213,9 +207,9 @@ impl Game {
         &self.current_half_inning
     }
 
-    pub fn advance(mut self, outcome: PitchOutcome) -> GameAdvance {
+    pub fn advance(mut self, outcome: PitchOutcome) -> GameResult {
         match self.current_half_inning.advance(outcome) {
-            HalfInningAdvance::InProgress(half_inning) => {
+            HalfInningResult::InProgress(half_inning) => {
                 self.current_half_inning = half_inning;
                 let pending_runs = self.current_half_inning.runs_scored();
                 if self.is_bottom_of_ninth() && self.should_end_game(pending_runs) {
@@ -223,13 +217,13 @@ impl Game {
                     let winner = self.score.winner().expect("Game should have winner");
                     let game_summary =
                         GameSummary::new(self.score, self.current_inning, winner);
-                    return GameAdvance::Complete(game_summary);
+                    return GameResult::Complete(game_summary);
                 }
 
-                GameAdvance::InProgress(self)
+                GameResult::InProgress(self)
             }
 
-            HalfInningAdvance::Complete(summary) => {
+            HalfInningResult::Complete(summary) => {
                 // Half inning completed, update score and advance
                 self.complete_half_inning(summary.runs_scored());
 
@@ -238,12 +232,12 @@ impl Game {
                     let winner = self.score.winner().expect("Game should have winner");
                     let game_summary =
                         GameSummary::new(self.score, self.current_inning, winner);
-                    return GameAdvance::Complete(game_summary);
+                    return GameResult::Complete(game_summary);
                 }
 
                 // Start next half inning
                 self = self.start_next_half();
-                GameAdvance::InProgress(self)
+                GameResult::InProgress(self)
             }
         }
     }
@@ -376,48 +370,48 @@ impl Default for Game {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum GameAdvance {
+pub enum GameResult {
     InProgress(Game),
     Complete(GameSummary),
 }
 
-impl GameAdvance {
-    pub fn advance(self, outcome: PitchOutcome) -> GameAdvance {
+impl GameResult {
+    pub fn advance(self, outcome: PitchOutcome) -> GameResult {
         match self {
-            GameAdvance::InProgress(game) => game.advance(outcome),
-            GameAdvance::Complete(_) => self, // Already complete, ignore the pitch
+            GameResult::InProgress(game) => game.advance(outcome),
+            GameResult::Complete(_) => self, // Already complete, ignore the pitch
         }
     }
 
     pub fn is_complete(&self) -> bool {
-        matches!(self, GameAdvance::Complete(_))
+        matches!(self, GameResult::Complete(_))
     }
 
     pub fn game(self) -> Option<Game> {
         match self {
-            GameAdvance::InProgress(game) => Some(game),
-            GameAdvance::Complete(_) => None,
+            GameResult::InProgress(game) => Some(game),
+            GameResult::Complete(_) => None,
         }
     }
 
     pub fn game_ref(&self) -> Option<&Game> {
         match self {
-            GameAdvance::InProgress(game) => Some(game),
-            GameAdvance::Complete(_) => None,
+            GameResult::InProgress(game) => Some(game),
+            GameResult::Complete(_) => None,
         }
     }
 
     pub fn summary(self) -> Option<GameSummary> {
         match self {
-            GameAdvance::InProgress(_) => None,
-            GameAdvance::Complete(summary) => Some(summary),
+            GameResult::InProgress(_) => None,
+            GameResult::Complete(summary) => Some(summary),
         }
     }
 
     pub fn summary_ref(&self) -> Option<&GameSummary> {
         match self {
-            GameAdvance::InProgress(_) => None,
-            GameAdvance::Complete(summary) => Some(summary),
+            GameResult::InProgress(_) => None,
+            GameResult::Complete(summary) => Some(summary),
         }
     }
 }

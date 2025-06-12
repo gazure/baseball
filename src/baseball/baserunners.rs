@@ -68,18 +68,19 @@ pub enum HomePlateOutcome {
     Out,
 }
 impl HomePlateOutcome {
-    fn outs(&self) -> u32 {
-        match self {
-            HomePlateOutcome::Out => 1,
-            _ => 0,
+    pub fn outs(self) -> u32 {
+        if self == Self::Out {
+            1
+        } else {
+            0
         }
     }
 
-    pub fn is_out(&self) -> bool {
+    pub fn is_out(self) -> bool {
         self.outs() > 0
     }
 
-    fn runs_scored(&self) -> Runs {
+    fn runs_scored(self) -> Runs {
         match self {
             HomePlateOutcome::One => 1,
             HomePlateOutcome::Two => 2,
@@ -180,23 +181,23 @@ impl PlayOutcome {
         }
     }
 
-    pub fn outs(&self) -> u32 {
+    pub fn outs(self) -> u32 {
         self.first().outs() + self.second().outs() + self.third().outs() + self.home.outs()
     }
 
-    pub fn first(&self) -> PlayBaseOutcome {
+    pub fn first(self) -> PlayBaseOutcome {
         self.first
     }
 
-    pub fn second(&self) -> PlayBaseOutcome {
+    pub fn second(self) -> PlayBaseOutcome {
         self.second
     }
 
-    pub fn third(&self) -> PlayBaseOutcome {
+    pub fn third(self) -> PlayBaseOutcome {
         self.third
     }
 
-    pub fn home(&self) -> HomePlateOutcome {
+    pub fn home(self) -> HomePlateOutcome {
         self.home
     }
 
@@ -262,7 +263,7 @@ impl PlayOutcome {
         }
     }
 
-    pub fn baserunners(&self) -> BaserunnerState {
+    pub fn baserunners(self) -> BaserunnerState {
         BaserunnerState {
             first: self.first.as_basrunner(),
             second: self.second.as_basrunner(),
@@ -270,7 +271,7 @@ impl PlayOutcome {
         }
     }
 
-    pub(crate) fn runs_scored(&self) -> Runs {
+    pub fn runs_scored(self) -> Runs {
         self.home.runs_scored()
     }
 }
@@ -349,7 +350,7 @@ impl BaserunnerState {
         }
     }
 
-    pub(crate) fn walk(&self, batter: BattingPosition) -> (BaserunnerState, Runs) {
+    pub fn walk(&self, batter: BattingPosition) -> (BaserunnerState, Runs) {
         let mut new_state = BaserunnerState::new().set_first(Some(batter));
         let mut runs_scored = Runs::default();
 
@@ -366,7 +367,7 @@ impl BaserunnerState {
         (new_state, runs_scored)
     }
 
-    pub(crate) fn home_run(&self) -> Runs {
+    pub fn home_run(&self) -> Runs {
         let mut runs = 1;
         if self.first.is_some() {
             runs += 1;
