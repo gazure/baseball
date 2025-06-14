@@ -69,11 +69,7 @@ pub enum HomePlateOutcome {
 }
 impl HomePlateOutcome {
     pub fn outs(self) -> u32 {
-        if self == Self::Out {
-            1
-        } else {
-            0
-        }
+        if self == Self::Out { 1 } else { 0 }
     }
 
     pub fn is_out(self) -> bool {
@@ -89,7 +85,6 @@ impl HomePlateOutcome {
             HomePlateOutcome::None => 0,
             HomePlateOutcome::Out => 0,
         }
-
     }
 }
 
@@ -427,5 +422,4 @@ mod tests {
         assert!(!state.has_runner_on(Base::Second));
         assert!(state.has_runner_on(Base::Third));
     }
-
 }

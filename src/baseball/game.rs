@@ -153,7 +153,6 @@ impl GameState {
     pub fn is_top(&self) -> bool {
         matches!(self, GameState::Inning(InningHalf::Top))
     }
-
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -215,8 +214,7 @@ impl Game {
                 if self.is_bottom_of_ninth() && self.should_end_game(pending_runs) {
                     self.complete_half_inning(pending_runs);
                     let winner = self.score.winner().expect("Game should have winner");
-                    let game_summary =
-                        GameSummary::new(self.score, self.current_inning, winner);
+                    let game_summary = GameSummary::new(self.score, self.current_inning, winner);
                     return GameResult::Complete(game_summary);
                 }
 
@@ -230,8 +228,7 @@ impl Game {
                 // Check if game should end
                 if self.should_end_game(0) {
                     let winner = self.score.winner().expect("Game should have winner");
-                    let game_summary =
-                        GameSummary::new(self.score, self.current_inning, winner);
+                    let game_summary = GameSummary::new(self.score, self.current_inning, winner);
                     return GameResult::Complete(game_summary);
                 }
 
@@ -287,7 +284,7 @@ impl Game {
                     GameState::Inning(InningHalf::Top) => false,
                     GameState::Inning(InningHalf::Bottom) => {
                         self.score().home() + pending_runs > self.score().away()
-                    },
+                    }
                     GameState::Complete => true,
                 }
             }
@@ -311,9 +308,7 @@ impl Game {
     fn start_next_half(mut self) -> Self {
         let (half, batting_order) = match self.state {
             GameState::InningEnd(InningHalf::Top) => (InningHalf::Bottom, self.home_batting_order),
-            GameState::InningEnd(InningHalf::Bottom) => {
-                (InningHalf::Top, self.away_batting_order)
-            },
+            GameState::InningEnd(InningHalf::Bottom) => (InningHalf::Top, self.away_batting_order),
             GameState::Inning(_) | GameState::Complete => {
                 // Should not happen
                 return self;
@@ -355,8 +350,6 @@ impl Game {
 
         format!("{} of the {}", half_text, inning_text)
     }
-
-
 
     fn is_bottom_of_ninth(&self) -> bool {
         self.current_inning == InningNumber::Ninth && self.state.is_bottom()

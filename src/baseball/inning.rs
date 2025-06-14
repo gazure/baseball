@@ -127,8 +127,7 @@ impl HalfInning {
                 let outs = outcome.outs();
                 let baserunners = outcome.baserunners();
                 let runs_scored = outcome.runs_scored();
-                self
-                    .add_runs(runs_scored)
+                self.add_runs(runs_scored)
                     .with_baserunners(baserunners)
                     .increment_outs(outs)
             }
