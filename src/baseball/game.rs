@@ -1,3 +1,5 @@
+use std::{fmt::Display, ptr::write};
+
 use crate::{
     Runs,
     baseball::{
@@ -64,6 +66,12 @@ pub struct GameScore {
     home: Runs,
 }
 
+impl Display for GameScore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Away: {} - Home: {}", self.away, self.home)
+    }
+}
+
 impl GameScore {
     pub fn new() -> Self {
         GameScore { away: 0, home: 0 }
@@ -117,6 +125,12 @@ pub struct GameSummary {
     winner: GameWinner,
 }
 
+impl Display for GameSummary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Final Score: Away: {} - Home: {}", self.final_score.away, self.final_score.home)
+    }
+}
+
 impl GameSummary {
     pub fn new(final_score: GameScore, innings_played: InningNumber, winner: GameWinner) -> Self {
         GameSummary {
@@ -145,6 +159,7 @@ pub enum GameState {
     InningEnd(InningHalf),
     Complete,
 }
+
 impl GameState {
     pub fn is_bottom(&self) -> bool {
         matches!(self, GameState::Inning(InningHalf::Bottom))
@@ -163,6 +178,12 @@ pub struct Game {
     current_half_inning: HalfInning,
     away_batting_order: BattingPosition,
     home_batting_order: BattingPosition,
+}
+
+impl Display for Game {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} Score: {}", self.inning_description(), self.score())
+    }
 }
 
 impl Game {
@@ -366,6 +387,15 @@ impl Default for Game {
 pub enum GameResult {
     InProgress(Game),
     Complete(GameSummary),
+}
+
+impl Display for GameResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GameResult::InProgress(game) => write!(f, "{}", game),
+            GameResult::Complete(summary) => write!(f, "{}", summary),
+        }
+    }
 }
 
 impl GameResult {

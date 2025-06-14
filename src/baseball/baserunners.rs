@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{Runs, baseball::lineup::BattingPosition};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -38,6 +40,17 @@ pub enum PlayBaseOutcome {
     None,
 }
 
+impl Display for PlayBaseOutcome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PlayBaseOutcome::ForceOut => write!(f, "Force Out"),
+            PlayBaseOutcome::TagOut => write!(f, "Tag Out"),
+            PlayBaseOutcome::Runner(batting_position) => write!(f, "Runner: {}", batting_position),
+            PlayBaseOutcome::None => write!(f, "None"),
+        }
+    }
+}
+
 impl PlayBaseOutcome {
     pub fn outs(&self) -> u32 {
         match self {
@@ -67,6 +80,20 @@ pub enum HomePlateOutcome {
     None,
     Out,
 }
+
+impl Display for HomePlateOutcome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HomePlateOutcome::One => write!(f, "1"),
+            HomePlateOutcome::Two => write!(f, "2"),
+            HomePlateOutcome::Three => write!(f, "3"),
+            HomePlateOutcome::Four => write!(f, "4"),
+            HomePlateOutcome::None => write!(f, "0"),
+            HomePlateOutcome::Out => write!(f, "X"),
+        }
+    }
+}
+
 impl HomePlateOutcome {
     pub fn outs(self) -> u32 {
         if self == Self::Out { 1 } else { 0 }
@@ -94,6 +121,12 @@ pub struct PlayOutcome {
     second: PlayBaseOutcome,
     third: PlayBaseOutcome,
     home: HomePlateOutcome,
+}
+
+impl Display for PlayOutcome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}, {}, {}, {}", self.first, self.second, self.third, self.home)
+    }
 }
 
 impl PlayOutcome {
@@ -148,12 +181,7 @@ impl PlayOutcome {
     }
 
     pub fn triple(baserunners: BaserunnerState, batter: BattingPosition) -> PlayOutcome {
-        let home = Self::scored(
-            baserunners.first(),
-            baserunners.second(),
-            baserunners.third(),
-            None,
-        );
+        let home = Self::scored(baserunners.first(), baserunners.second(), baserunners.third(), None);
         PlayOutcome {
             first: PlayBaseOutcome::None,
             second: PlayBaseOutcome::None,
