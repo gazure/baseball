@@ -1,5 +1,3 @@
-#![deny(clippy::pedantic)]
-
 mod baseball;
 mod game;
 
