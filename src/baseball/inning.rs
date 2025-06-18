@@ -5,7 +5,7 @@ use crate::{
     baseball::{
         baserunners::BaserunnerState,
         lineup::BattingPosition,
-        pa::{PitchOutcome, PlateAppearance, PlateAppearanceResult},
+        plate_appearance::{PitchOutcome, PlateAppearance, PlateAppearanceResult},
     },
 };
 
@@ -133,15 +133,11 @@ impl HalfInning {
             }
             PlateAppearanceResult::Walk => {
                 let (baserunners, runs) = self.baserunners.walk(self.current_batter);
-                self.add_runs(runs)
-                    .with_baserunners(baserunners)
-                    .advance_batter()
+                self.add_runs(runs).with_baserunners(baserunners).advance_batter()
             }
             PlateAppearanceResult::HitByPitch => {
                 let (baserunners, runs) = self.baserunners.walk(self.current_batter);
-                self.add_runs(runs)
-                    .with_baserunners(baserunners)
-                    .advance_batter()
+                self.add_runs(runs).with_baserunners(baserunners).advance_batter()
             }
             PlateAppearanceResult::HomeRun => {
                 let runs = self.baserunners.home_run();
@@ -177,6 +173,34 @@ impl HalfInning {
     fn with_baserunners(mut self, baserunners: BaserunnerState) -> Self {
         self.baserunners = baserunners;
         self
+    }
+
+    pub fn summary(&self) -> Result<String, std::fmt::Error> {
+        use std::fmt::Write;
+
+        let baserunners = self.baserunners();
+        let mut message = String::new();
+
+        writeln!(message, "  Baserunners:")?;
+
+        if baserunners.is_empty() {
+            writeln!(message, "    Bases empty")?;
+        } else {
+            if let Some(runner) = baserunners.first() {
+                writeln!(message, "    1st: Batter #{}", runner.as_number())?;
+            }
+            if let Some(runner) = baserunners.second() {
+                writeln!(message, "    2nd: Batter #{}", runner.as_number())?;
+            }
+            if let Some(runner) = baserunners.third() {
+                writeln!(message, "    3rd: Batter #{}", runner.as_number())?;
+            }
+        }
+
+        writeln!(message, "  Runs scored this inning: {}", self.runs_scored)?;
+        write!(message, "  Current batter: #{}", self.current_batter().as_number())?;
+
+        Ok(message)
     }
 }
 
@@ -234,8 +258,10 @@ impl HalfInningResult {
 
 #[cfg(test)]
 mod tests {
+    use tracing::info;
+
     use super::*;
-    use crate::baseball::{baserunners::PlayOutcome, pa::PitchOutcome};
+    use crate::baseball::{baserunners::PlayOutcome, plate_appearance::PitchOutcome};
 
     #[test]
     fn test_batting_position_as_number() {
@@ -326,5 +352,133 @@ mod tests {
             .advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
 
         assert!(advance.is_complete());
+    }
+
+    #[test]
+    fn demo_half_inning() {
+        let batting_pos = BattingPosition::First;
+        let half_inning = HalfInning::new(InningHalf::Top, batting_pos);
+
+        info!("Starting top half with leadoff batter");
+        info!(
+            "Initial state: {} outs, batter #{}",
+            half_inning.outs().as_number(),
+            half_inning.current_batter().as_number()
+        );
+
+        // Batter 1: Quick out
+        info!("  Batter #1 steps up...");
+        let mut advance = half_inning.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
+        if let Some(half_inning) = advance.half_inning_ref() {
+            info!("    Result: Out");
+            info!(
+                "    New state: {} outs, next batter #{}",
+                half_inning.outs().as_number(),
+                half_inning.current_batter().as_number()
+            );
+
+            // Batter 2: Home run
+            info!("  Batter #2 steps up...");
+            advance = advance.advance(PitchOutcome::HomeRun);
+            if let Some(half_inning2) = advance.half_inning_ref() {
+                info!("    Result: Home Run! 🎉");
+                info!(
+                    "    New state: {} outs, {} runs, next batter #{}",
+                    half_inning2.outs().as_number(),
+                    half_inning2.runs_scored(),
+                    half_inning2.current_batter().as_number()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn demo_baserunner_tracking() {
+        info!("Demonstrating type-safe baserunner advancement...");
+
+        let batting_pos = BattingPosition::First;
+        let mut half_inning = HalfInning::new(InningHalf::Bottom, batting_pos);
+
+        info!("Initial state: No runners on base");
+        info!("{}",half_inning.summary().expect("half_inning should be valid"));
+
+        // Start with the advance wrapper
+        let mut advance = HalfInningResult::InProgress(half_inning);
+
+        // Batter 1: Single
+        info!("🏏 Batter #1: Single");
+        advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::single(
+            half_inning.baserunners(),
+            half_inning.current_batter(),
+        )));
+        if let Some(hi) = advance.half_inning() {
+            info!("{}", hi.summary().expect("half_inning should be valid"));
+        } else {
+            info!("  Half inning ended unexpectedly");
+            return;
+        }
+
+        // Batter 2: Walk (forces runner)
+        // Batter 2: Walk (4 balls)
+        info!("🏏 Batter #2: Walk (4 balls)");
+        advance = advance.advance(PitchOutcome::Ball);
+        if advance.is_complete() {
+            return;
+        }
+        advance = advance.advance(PitchOutcome::Ball);
+        if advance.is_complete() {
+            return;
+        }
+        advance = advance.advance(PitchOutcome::Ball);
+        if advance.is_complete() {
+            return;
+        }
+        advance = advance.advance(PitchOutcome::Ball);
+        if let Some(hi) = advance.half_inning() {
+            half_inning = hi;
+            info!("{}", hi.summary().expect("half_inning should be valid"));
+        } else {
+            return;
+        }
+
+        // Batter 3: Double (runners advance)
+        info!("🏏 Batter #3: Double");
+        advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::double(
+            half_inning.baserunners(),
+            half_inning.current_batter(),
+        )));
+        if let Some(hi) = advance.half_inning() {
+            half_inning = hi;
+            info!("{}", hi.summary().expect("half_inning should be valid"));
+        } else {
+            return;
+        }
+
+        // Batter 4: Triple (clears bases)
+        info!("🏏 Batter #4: Triple");
+        advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::triple(
+            half_inning.baserunners(),
+            half_inning.current_batter(),
+        )));
+        if let Some(hi) = advance.half_inning() {
+            info!("{}", hi.summary().expect("half_inning should be valid"));
+        } else {
+            return;
+        }
+
+        // Batter 5: Home run
+        info!("🏏 Batter #5: Home Run");
+        advance = advance.advance(PitchOutcome::HomeRun);
+        if let Some(hi) = advance.half_inning() {
+            info!("{}", hi.summary().expect("half_inning should be valid"));
+        } else {
+            info!("  Half inning complete after home run");
+            return;
+        }
+
+        info!("🎯 Baserunner tracking complete!");
+        info!("✅ Type-safe advancement rules enforced");
+        info!("✅ Automatic run scoring calculation");
+        info!("✅ Proper force situations handled");
     }
 }

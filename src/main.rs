@@ -10,6 +10,5 @@ fn main() {
         })
         .init();
 
-    baseball::demo();
     baseball::run();
 }

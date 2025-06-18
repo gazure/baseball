@@ -33,28 +33,28 @@ impl Base {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum PlayBaseOutcome {
+pub enum BaseOutcome {
     ForceOut,
     TagOut,
     Runner(BattingPosition),
     None,
 }
 
-impl Display for PlayBaseOutcome {
+impl Display for BaseOutcome {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PlayBaseOutcome::ForceOut => write!(f, "Force Out"),
-            PlayBaseOutcome::TagOut => write!(f, "Tag Out"),
-            PlayBaseOutcome::Runner(batting_position) => write!(f, "Runner: {}", batting_position),
-            PlayBaseOutcome::None => write!(f, "None"),
+            BaseOutcome::ForceOut => write!(f, "Force Out"),
+            BaseOutcome::TagOut => write!(f, "Tag Out"),
+            BaseOutcome::Runner(batting_position) => write!(f, "Runner: {}", batting_position),
+            BaseOutcome::None => write!(f, "None"),
         }
     }
 }
 
-impl PlayBaseOutcome {
+impl BaseOutcome {
     pub fn outs(&self) -> u32 {
         match self {
-            PlayBaseOutcome::ForceOut | PlayBaseOutcome::TagOut => 1,
+            BaseOutcome::ForceOut | BaseOutcome::TagOut => 1,
             _ => 0,
         }
     }
@@ -65,14 +65,14 @@ impl PlayBaseOutcome {
 
     fn as_basrunner(self) -> Option<BattingPosition> {
         match self {
-            PlayBaseOutcome::Runner(batting_position) => Some(batting_position),
+            BaseOutcome::Runner(batting_position) => Some(batting_position),
             _ => None,
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum HomePlateOutcome {
+pub enum HomeOutcome {
     One,
     Two,
     Three,
@@ -81,20 +81,20 @@ pub enum HomePlateOutcome {
     Out,
 }
 
-impl Display for HomePlateOutcome {
+impl Display for HomeOutcome {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            HomePlateOutcome::One => write!(f, "1"),
-            HomePlateOutcome::Two => write!(f, "2"),
-            HomePlateOutcome::Three => write!(f, "3"),
-            HomePlateOutcome::Four => write!(f, "4"),
-            HomePlateOutcome::None => write!(f, "0"),
-            HomePlateOutcome::Out => write!(f, "X"),
+            HomeOutcome::One => write!(f, "1"),
+            HomeOutcome::Two => write!(f, "2"),
+            HomeOutcome::Three => write!(f, "3"),
+            HomeOutcome::Four => write!(f, "4"),
+            HomeOutcome::None => write!(f, "0"),
+            HomeOutcome::Out => write!(f, "X"),
         }
     }
 }
 
-impl HomePlateOutcome {
+impl HomeOutcome {
     pub fn outs(self) -> u32 {
         if self == Self::Out { 1 } else { 0 }
     }
@@ -105,22 +105,22 @@ impl HomePlateOutcome {
 
     fn runs_scored(self) -> Runs {
         match self {
-            HomePlateOutcome::One => 1,
-            HomePlateOutcome::Two => 2,
-            HomePlateOutcome::Three => 3,
-            HomePlateOutcome::Four => 4,
-            HomePlateOutcome::None => 0,
-            HomePlateOutcome::Out => 0,
+            HomeOutcome::One => 1,
+            HomeOutcome::Two => 2,
+            HomeOutcome::Three => 3,
+            HomeOutcome::Four => 4,
+            HomeOutcome::None => 0,
+            HomeOutcome::Out => 0,
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlayOutcome {
-    first: PlayBaseOutcome,
-    second: PlayBaseOutcome,
-    third: PlayBaseOutcome,
-    home: HomePlateOutcome,
+    first: BaseOutcome,
+    second: BaseOutcome,
+    third: BaseOutcome,
+    home: HomeOutcome,
 }
 
 impl Display for PlayOutcome {
@@ -131,10 +131,10 @@ impl Display for PlayOutcome {
 
 impl PlayOutcome {
     pub fn new(
-        first: PlayBaseOutcome,
-        second: PlayBaseOutcome,
-        third: PlayBaseOutcome,
-        home: HomePlateOutcome,
+        first: BaseOutcome,
+        second: BaseOutcome,
+        third: BaseOutcome,
+        home: HomeOutcome,
     ) -> Self {
         PlayOutcome {
             first,
@@ -146,36 +146,36 @@ impl PlayOutcome {
 
     pub fn groundout() -> Self {
         PlayOutcome {
-            first: PlayBaseOutcome::ForceOut,
-            second: PlayBaseOutcome::None,
-            third: PlayBaseOutcome::None,
-            home: HomePlateOutcome::None,
+            first: BaseOutcome::ForceOut,
+            second: BaseOutcome::None,
+            third: BaseOutcome::None,
+            home: HomeOutcome::None,
         }
     }
 
     pub fn single(baserunners: BaserunnerState, batter: BattingPosition) -> PlayOutcome {
         PlayOutcome {
-            first: PlayBaseOutcome::Runner(batter),
+            first: BaseOutcome::Runner(batter),
             second: baserunners
                 .first()
-                .map(PlayBaseOutcome::Runner)
-                .unwrap_or(PlayBaseOutcome::None),
+                .map(BaseOutcome::Runner)
+                .unwrap_or(BaseOutcome::None),
             third: baserunners
                 .second()
-                .map(PlayBaseOutcome::Runner)
-                .unwrap_or(PlayBaseOutcome::None),
+                .map(BaseOutcome::Runner)
+                .unwrap_or(BaseOutcome::None),
             home: Self::scored(None, None, baserunners.third(), None),
         }
     }
 
     pub fn double(baserunners: BaserunnerState, batter: BattingPosition) -> PlayOutcome {
         PlayOutcome {
-            first: PlayBaseOutcome::None,
-            second: PlayBaseOutcome::Runner(batter),
+            first: BaseOutcome::None,
+            second: BaseOutcome::Runner(batter),
             third: baserunners
                 .first()
-                .map(PlayBaseOutcome::Runner)
-                .unwrap_or(PlayBaseOutcome::None),
+                .map(BaseOutcome::Runner)
+                .unwrap_or(BaseOutcome::None),
             home: Self::scored(None, baserunners.second(), baserunners.third(), None),
         }
     }
@@ -183,18 +183,18 @@ impl PlayOutcome {
     pub fn triple(baserunners: BaserunnerState, batter: BattingPosition) -> PlayOutcome {
         let home = Self::scored(baserunners.first(), baserunners.second(), baserunners.third(), None);
         PlayOutcome {
-            first: PlayBaseOutcome::None,
-            second: PlayBaseOutcome::None,
-            third: PlayBaseOutcome::Runner(batter),
+            first: BaseOutcome::None,
+            second: BaseOutcome::None,
+            third: BaseOutcome::Runner(batter),
             home,
         }
     }
 
     pub fn homerun(baserunners: BaserunnerState, batter: BattingPosition) -> PlayOutcome {
         PlayOutcome {
-            first: PlayBaseOutcome::None,
-            second: PlayBaseOutcome::None,
-            third: PlayBaseOutcome::None,
+            first: BaseOutcome::None,
+            second: BaseOutcome::None,
+            third: BaseOutcome::None,
             home: Self::scored(
                 baserunners.first(),
                 baserunners.second(),
@@ -208,23 +208,23 @@ impl PlayOutcome {
         self.first().outs() + self.second().outs() + self.third().outs() + self.home.outs()
     }
 
-    pub fn first(self) -> PlayBaseOutcome {
+    pub fn first(self) -> BaseOutcome {
         self.first
     }
 
-    pub fn second(self) -> PlayBaseOutcome {
+    pub fn second(self) -> BaseOutcome {
         self.second
     }
 
-    pub fn third(self) -> PlayBaseOutcome {
+    pub fn third(self) -> BaseOutcome {
         self.third
     }
 
-    pub fn home(self) -> HomePlateOutcome {
+    pub fn home(self) -> HomeOutcome {
         self.home
     }
 
-    pub fn with_first(self, first: PlayBaseOutcome) -> Self {
+    pub fn with_first(self, first: BaseOutcome) -> Self {
         Self {
             first,
             second: self.second,
@@ -233,7 +233,7 @@ impl PlayOutcome {
         }
     }
 
-    pub fn with_second(self, second: PlayBaseOutcome) -> Self {
+    pub fn with_second(self, second: BaseOutcome) -> Self {
         Self {
             first: self.first,
             second,
@@ -242,7 +242,7 @@ impl PlayOutcome {
         }
     }
 
-    pub fn with_third(self, third: PlayBaseOutcome) -> Self {
+    pub fn with_third(self, third: BaseOutcome) -> Self {
         Self {
             first: self.first,
             second: self.second,
@@ -251,7 +251,7 @@ impl PlayOutcome {
         }
     }
 
-    pub fn with_home(self, home: HomePlateOutcome) -> Self {
+    pub fn with_home(self, home: HomeOutcome) -> Self {
         Self {
             first: self.first,
             second: self.second,
@@ -265,24 +265,24 @@ impl PlayOutcome {
         second: Option<BattingPosition>,
         third: Option<BattingPosition>,
         batter: Option<BattingPosition>,
-    ) -> HomePlateOutcome {
+    ) -> HomeOutcome {
         match (first, second, third, batter) {
-            (None, None, None, None) => HomePlateOutcome::None,
-            (None, None, None, Some(_)) => HomePlateOutcome::One,
-            (None, None, Some(_), None) => HomePlateOutcome::Two,
-            (None, None, Some(_), Some(_)) => HomePlateOutcome::Three,
-            (None, Some(_), None, None) => HomePlateOutcome::One,
-            (None, Some(_), None, Some(_)) => HomePlateOutcome::Two,
-            (None, Some(_), Some(_), None) => HomePlateOutcome::Two,
-            (None, Some(_), Some(_), Some(_)) => HomePlateOutcome::Three,
-            (Some(_), None, None, None) => HomePlateOutcome::One,
-            (Some(_), None, None, Some(_)) => HomePlateOutcome::Two,
-            (Some(_), None, Some(_), None) => HomePlateOutcome::Two,
-            (Some(_), None, Some(_), Some(_)) => HomePlateOutcome::Three,
-            (Some(_), Some(_), None, None) => HomePlateOutcome::Two,
-            (Some(_), Some(_), None, Some(_)) => HomePlateOutcome::Three,
-            (Some(_), Some(_), Some(_), None) => HomePlateOutcome::Three,
-            (Some(_), Some(_), Some(_), Some(_)) => HomePlateOutcome::Four,
+            (None, None, None, None) => HomeOutcome::None,
+            (None, None, None, Some(_)) => HomeOutcome::One,
+            (None, None, Some(_), None) => HomeOutcome::Two,
+            (None, None, Some(_), Some(_)) => HomeOutcome::Three,
+            (None, Some(_), None, None) => HomeOutcome::One,
+            (None, Some(_), None, Some(_)) => HomeOutcome::Two,
+            (None, Some(_), Some(_), None) => HomeOutcome::Two,
+            (None, Some(_), Some(_), Some(_)) => HomeOutcome::Three,
+            (Some(_), None, None, None) => HomeOutcome::One,
+            (Some(_), None, None, Some(_)) => HomeOutcome::Two,
+            (Some(_), None, Some(_), None) => HomeOutcome::Two,
+            (Some(_), None, Some(_), Some(_)) => HomeOutcome::Three,
+            (Some(_), Some(_), None, None) => HomeOutcome::Two,
+            (Some(_), Some(_), None, Some(_)) => HomeOutcome::Three,
+            (Some(_), Some(_), Some(_), None) => HomeOutcome::Three,
+            (Some(_), Some(_), Some(_), Some(_)) => HomeOutcome::Four,
         }
     }
 
@@ -413,6 +413,7 @@ impl Default for BaserunnerState {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
@@ -450,4 +451,5 @@ mod tests {
         assert!(!state.has_runner_on(Base::Second));
         assert!(state.has_runner_on(Base::Third));
     }
+
 }

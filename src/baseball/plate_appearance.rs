@@ -171,16 +171,6 @@ impl Display for PitchOutcome {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum BallInPlay {
-    Out,
-    Single,
-    Double,
-    Triple,
-    HomeRun,
-    Error,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct PlateAppearance {
     count: Count,
@@ -263,7 +253,7 @@ impl PlateAppearanceResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BaserunnerState, BattingPosition, baseball::baserunners::PlayBaseOutcome};
+    use crate::{BaserunnerState, BattingPosition, baseball::baserunners::BaseOutcome};
 
     #[test]
     fn test_count_new() {
@@ -379,7 +369,7 @@ mod tests {
         if let PlateAppearanceResult::InPlay(outcome) = pa {
             assert_eq!(
                 outcome.first(),
-                PlayBaseOutcome::Runner(BattingPosition::First)
+                BaseOutcome::Runner(BattingPosition::First)
             )
         } else {
             panic!("Expected single");
