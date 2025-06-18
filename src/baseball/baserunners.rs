@@ -1,6 +1,9 @@
 use std::fmt::Display;
 
-use crate::{baseball::{inning::Outs, lineup::BattingPosition}, Runs};
+use crate::{
+    Runs,
+    baseball::{inning::Outs, lineup::BattingPosition},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Base {
@@ -97,30 +100,21 @@ impl HomeOutcome {
     }
 
     pub fn new(runs: Runs, outs: Outs) -> Self {
-        HomeOutcome {
-            runs,
-            outs,
-        }
+        HomeOutcome { runs, outs }
     }
 
     pub fn new_with_runs(runs: Runs) -> Self {
-        HomeOutcome {
-            runs,
-            outs: Outs::Zero,
-        }
+        HomeOutcome { runs, outs: Outs::Zero }
     }
 
     pub fn new_with_outs(outs: Outs) -> Self {
-        HomeOutcome {
-            runs: 0,
-            outs,
-        }
+        HomeOutcome { runs: 0, outs }
     }
 
     pub fn none() -> Self {
         HomeOutcome {
             runs: 0,
-            outs: Outs::Zero
+            outs: Outs::Zero,
         }
     }
 }
@@ -140,12 +134,7 @@ impl Display for PlayOutcome {
 }
 
 impl PlayOutcome {
-    pub fn new(
-        first: BaseOutcome,
-        second: BaseOutcome,
-        third: BaseOutcome,
-        home: HomeOutcome,
-    ) -> Self {
+    pub fn new(first: BaseOutcome, second: BaseOutcome, third: BaseOutcome, home: HomeOutcome) -> Self {
         PlayOutcome {
             first,
             second,
@@ -462,7 +451,7 @@ mod tests {
         assert!(state.has_runner_on(Base::Third));
     }
 
-#[test]
+    #[test]
     fn test_home_outcome_creation() {
         let outcome = HomeOutcome::new(2, Outs::Two);
         assert_eq!(outcome.runs, 2);
@@ -499,7 +488,10 @@ mod tests {
 
     #[test]
     fn test_base_outcome_as_baserunner() {
-        assert_eq!(BaseOutcome::Runner(BattingPosition::Third).as_basrunner(), Some(BattingPosition::Third));
+        assert_eq!(
+            BaseOutcome::Runner(BattingPosition::Third).as_basrunner(),
+            Some(BattingPosition::Third)
+        );
         assert_eq!(BaseOutcome::ForceOut.as_basrunner(), None);
         assert_eq!(BaseOutcome::TagOut.as_basrunner(), None);
         assert_eq!(BaseOutcome::None.as_basrunner(), None);
@@ -511,7 +503,7 @@ mod tests {
             BaseOutcome::Runner(BattingPosition::First),
             BaseOutcome::None,
             BaseOutcome::TagOut,
-            HomeOutcome::new_with_runs(1)
+            HomeOutcome::new_with_runs(1),
         );
 
         assert_eq!(outcome.first(), BaseOutcome::Runner(BattingPosition::First));
@@ -611,7 +603,7 @@ mod tests {
             BaseOutcome::Runner(BattingPosition::First),
             BaseOutcome::None,
             BaseOutcome::Runner(BattingPosition::Third),
-            HomeOutcome::none()
+            HomeOutcome::none(),
         );
 
         let baserunners = outcome.baserunners();
@@ -619,5 +611,4 @@ mod tests {
         assert_eq!(baserunners.second(), None);
         assert_eq!(baserunners.third(), Some(BattingPosition::Third));
     }
-
 }

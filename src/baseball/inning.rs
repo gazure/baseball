@@ -33,7 +33,6 @@ impl Display for Outs {
     }
 }
 
-
 impl Outs {
     pub fn add_out(self) -> Outs {
         match self {
@@ -409,7 +408,7 @@ mod tests {
         let mut half_inning = HalfInning::new(InningHalf::Bottom, batting_pos);
 
         info!("Initial state: No runners on base");
-        info!("{}",half_inning.summary().expect("half_inning should be valid"));
+        info!("{}", half_inning.summary().expect("half_inning should be valid"));
 
         // Start with the advance wrapper
         let mut advance = HalfInningResult::InProgress(half_inning);

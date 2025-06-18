@@ -127,7 +127,11 @@ pub struct GameSummary {
 
 impl Display for GameSummary {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Final Score: Away: {} - Home: {}", self.final_score.away, self.final_score.home)
+        write!(
+            f,
+            "Final Score: Away: {} - Home: {}",
+            self.final_score.away, self.final_score.home
+        )
     }
 }
 
@@ -303,9 +307,7 @@ impl Game {
                         self.score.home() != self.score.away()
                     }
                     GameState::Inning(InningHalf::Top) => false,
-                    GameState::Inning(InningHalf::Bottom) => {
-                        self.score().home() + pending_runs > self.score().away()
-                    }
+                    GameState::Inning(InningHalf::Bottom) => self.score().home() + pending_runs > self.score().away(),
                     GameState::Complete => true,
                 }
             }

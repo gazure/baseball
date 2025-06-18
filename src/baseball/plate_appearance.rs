@@ -367,10 +367,7 @@ mod tests {
 
         assert!(pa.is_complete());
         if let PlateAppearanceResult::InPlay(outcome) = pa {
-            assert_eq!(
-                outcome.first(),
-                BaseOutcome::Runner(BattingPosition::First)
-            )
+            assert_eq!(outcome.first(), BaseOutcome::Runner(BattingPosition::First))
         } else {
             panic!("Expected single");
         }
@@ -432,41 +429,13 @@ mod tests {
 
         let pa = PlateAppearance::new();
         let pitches = [
-            (
-                "Ball",
-                PitchOutcome::Ball,
-                Count::new(Balls::One, Strikes::Zero),
-            ),
-            (
-                "Strike",
-                PitchOutcome::Strike,
-                Count::new(Balls::One, Strikes::One),
-            ),
-            (
-                "Ball",
-                PitchOutcome::Ball,
-                Count::new(Balls::Two, Strikes::One),
-            ),
-            (
-                "Strike",
-                PitchOutcome::Strike,
-                Count::new(Balls::Two, Strikes::Two),
-            ),
-            (
-                "Ball",
-                PitchOutcome::Ball,
-                Count::new(Balls::Three, Strikes::Two),
-            ),
-            (
-                "Foul ball",
-                PitchOutcome::Foul,
-                Count::new(Balls::Three, Strikes::Two),
-            ),
-            (
-                "Foul ball",
-                PitchOutcome::Foul,
-                Count::new(Balls::Three, Strikes::Two),
-            ),
+            ("Ball", PitchOutcome::Ball, Count::new(Balls::One, Strikes::Zero)),
+            ("Strike", PitchOutcome::Strike, Count::new(Balls::One, Strikes::One)),
+            ("Ball", PitchOutcome::Ball, Count::new(Balls::Two, Strikes::One)),
+            ("Strike", PitchOutcome::Strike, Count::new(Balls::Two, Strikes::Two)),
+            ("Ball", PitchOutcome::Ball, Count::new(Balls::Three, Strikes::Two)),
+            ("Foul ball", PitchOutcome::Foul, Count::new(Balls::Three, Strikes::Two)),
+            ("Foul ball", PitchOutcome::Foul, Count::new(Balls::Three, Strikes::Two)),
             ("Ball", PitchOutcome::Ball, Count::default()),
         ];
 
