@@ -1,6 +1,9 @@
 use std::fmt::Display;
 
-use crate::{Runs, baseball::lineup::BattingPosition};
+use crate::{
+    Runs,
+    baseball::{inning::Outs, lineup::BattingPosition},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Base {
@@ -52,7 +55,7 @@ impl Display for BaseOutcome {
 }
 
 impl BaseOutcome {
-    pub fn outs(&self) -> u32 {
+    pub fn outs(&self) -> u8 {
         match self {
             BaseOutcome::ForceOut | BaseOutcome::TagOut => 1,
             _ => 0,
@@ -72,31 +75,20 @@ impl BaseOutcome {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum HomeOutcome {
-    One,
-    Two,
-    Three,
-    Four,
-    None,
-    Out,
+pub struct HomeOutcome {
+    pub runs: Runs,
+    pub outs: Outs,
 }
 
 impl Display for HomeOutcome {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            HomeOutcome::One => write!(f, "1"),
-            HomeOutcome::Two => write!(f, "2"),
-            HomeOutcome::Three => write!(f, "3"),
-            HomeOutcome::Four => write!(f, "4"),
-            HomeOutcome::None => write!(f, "0"),
-            HomeOutcome::Out => write!(f, "X"),
-        }
+        write!(f, "{} runs, {} outs", self.runs, self.outs)
     }
 }
 
 impl HomeOutcome {
-    pub fn outs(self) -> u32 {
-        if self == Self::Out { 1 } else { 0 }
+    pub fn outs(self) -> u8 {
+        self.outs.as_number()
     }
 
     pub fn is_out(self) -> bool {
@@ -104,13 +96,25 @@ impl HomeOutcome {
     }
 
     fn runs_scored(self) -> Runs {
-        match self {
-            HomeOutcome::One => 1,
-            HomeOutcome::Two => 2,
-            HomeOutcome::Three => 3,
-            HomeOutcome::Four => 4,
-            HomeOutcome::None => 0,
-            HomeOutcome::Out => 0,
+        self.runs
+    }
+
+    pub fn new(runs: Runs, outs: Outs) -> Self {
+        HomeOutcome { runs, outs }
+    }
+
+    pub fn new_with_runs(runs: Runs) -> Self {
+        HomeOutcome { runs, outs: Outs::Zero }
+    }
+
+    pub fn new_with_outs(outs: Outs) -> Self {
+        HomeOutcome { runs: 0, outs }
+    }
+
+    pub fn none() -> Self {
+        HomeOutcome {
+            runs: 0,
+            outs: Outs::Zero,
         }
     }
 }
@@ -130,12 +134,7 @@ impl Display for PlayOutcome {
 }
 
 impl PlayOutcome {
-    pub fn new(
-        first: BaseOutcome,
-        second: BaseOutcome,
-        third: BaseOutcome,
-        home: HomeOutcome,
-    ) -> Self {
+    pub fn new(first: BaseOutcome, second: BaseOutcome, third: BaseOutcome, home: HomeOutcome) -> Self {
         PlayOutcome {
             first,
             second,
@@ -149,7 +148,7 @@ impl PlayOutcome {
             first: BaseOutcome::ForceOut,
             second: BaseOutcome::None,
             third: BaseOutcome::None,
-            home: HomeOutcome::None,
+            home: HomeOutcome::none(),
         }
     }
 
@@ -204,7 +203,7 @@ impl PlayOutcome {
         }
     }
 
-    pub fn outs(self) -> u32 {
+    pub fn outs(self) -> u8 {
         self.first().outs() + self.second().outs() + self.third().outs() + self.home.outs()
     }
 
@@ -267,22 +266,22 @@ impl PlayOutcome {
         batter: Option<BattingPosition>,
     ) -> HomeOutcome {
         match (first, second, third, batter) {
-            (None, None, None, None) => HomeOutcome::None,
-            (None, None, None, Some(_)) => HomeOutcome::One,
-            (None, None, Some(_), None) => HomeOutcome::Two,
-            (None, None, Some(_), Some(_)) => HomeOutcome::Three,
-            (None, Some(_), None, None) => HomeOutcome::One,
-            (None, Some(_), None, Some(_)) => HomeOutcome::Two,
-            (None, Some(_), Some(_), None) => HomeOutcome::Two,
-            (None, Some(_), Some(_), Some(_)) => HomeOutcome::Three,
-            (Some(_), None, None, None) => HomeOutcome::One,
-            (Some(_), None, None, Some(_)) => HomeOutcome::Two,
-            (Some(_), None, Some(_), None) => HomeOutcome::Two,
-            (Some(_), None, Some(_), Some(_)) => HomeOutcome::Three,
-            (Some(_), Some(_), None, None) => HomeOutcome::Two,
-            (Some(_), Some(_), None, Some(_)) => HomeOutcome::Three,
-            (Some(_), Some(_), Some(_), None) => HomeOutcome::Three,
-            (Some(_), Some(_), Some(_), Some(_)) => HomeOutcome::Four,
+            (None, None, None, None) => HomeOutcome::none(),
+            (None, None, None, Some(_)) => HomeOutcome::new_with_runs(0),
+            (None, None, Some(_), None) => HomeOutcome::new_with_runs(1),
+            (None, None, Some(_), Some(_)) => HomeOutcome::new_with_runs(2),
+            (None, Some(_), None, None) => HomeOutcome::new_with_runs(1),
+            (None, Some(_), None, Some(_)) => HomeOutcome::new_with_runs(2),
+            (None, Some(_), Some(_), None) => HomeOutcome::new_with_runs(2),
+            (None, Some(_), Some(_), Some(_)) => HomeOutcome::new_with_runs(3),
+            (Some(_), None, None, None) => HomeOutcome::new_with_runs(1),
+            (Some(_), None, None, Some(_)) => HomeOutcome::new_with_runs(2),
+            (Some(_), None, Some(_), None) => HomeOutcome::new_with_runs(2),
+            (Some(_), None, Some(_), Some(_)) => HomeOutcome::new_with_runs(3),
+            (Some(_), Some(_), None, None) => HomeOutcome::new_with_runs(2),
+            (Some(_), Some(_), None, Some(_)) => HomeOutcome::new_with_runs(3),
+            (Some(_), Some(_), Some(_), None) => HomeOutcome::new_with_runs(3),
+            (Some(_), Some(_), Some(_), Some(_)) => HomeOutcome::new_with_runs(4),
         }
     }
 
@@ -452,4 +451,164 @@ mod tests {
         assert!(state.has_runner_on(Base::Third));
     }
 
+    #[test]
+    fn test_home_outcome_creation() {
+        let outcome = HomeOutcome::new(2, Outs::Two);
+        assert_eq!(outcome.runs, 2);
+        assert_eq!(outcome.outs(), 2);
+        assert!(outcome.is_out());
+
+        let no_runs = HomeOutcome::new_with_outs(Outs::One);
+        assert_eq!(no_runs.runs, 0);
+        assert_eq!(no_runs.outs(), 1);
+
+        let no_outs = HomeOutcome::new_with_runs(3);
+        assert_eq!(no_outs.runs, 3);
+        assert_eq!(no_outs.outs(), 0);
+        assert!(!no_outs.is_out());
+
+        let none = HomeOutcome::none();
+        assert_eq!(none.runs, 0);
+        assert_eq!(none.outs(), 0);
+        assert!(!none.is_out());
+    }
+
+    #[test]
+    fn test_base_outcome_outs() {
+        assert_eq!(BaseOutcome::ForceOut.outs(), 1);
+        assert_eq!(BaseOutcome::TagOut.outs(), 1);
+        assert_eq!(BaseOutcome::Runner(BattingPosition::First).outs(), 0);
+        assert_eq!(BaseOutcome::None.outs(), 0);
+
+        assert!(BaseOutcome::ForceOut.is_out());
+        assert!(BaseOutcome::TagOut.is_out());
+        assert!(!BaseOutcome::Runner(BattingPosition::First).is_out());
+        assert!(!BaseOutcome::None.is_out());
+    }
+
+    #[test]
+    fn test_base_outcome_as_baserunner() {
+        assert_eq!(
+            BaseOutcome::Runner(BattingPosition::Third).as_basrunner(),
+            Some(BattingPosition::Third)
+        );
+        assert_eq!(BaseOutcome::ForceOut.as_basrunner(), None);
+        assert_eq!(BaseOutcome::TagOut.as_basrunner(), None);
+        assert_eq!(BaseOutcome::None.as_basrunner(), None);
+    }
+
+    #[test]
+    fn test_play_outcome_creation() {
+        let outcome = PlayOutcome::new(
+            BaseOutcome::Runner(BattingPosition::First),
+            BaseOutcome::None,
+            BaseOutcome::TagOut,
+            HomeOutcome::new_with_runs(1),
+        );
+
+        assert_eq!(outcome.first(), BaseOutcome::Runner(BattingPosition::First));
+        assert_eq!(outcome.second(), BaseOutcome::None);
+        assert_eq!(outcome.third(), BaseOutcome::TagOut);
+        assert_eq!(outcome.home().runs, 1);
+        assert_eq!(outcome.outs(), 1); // Only third base has an out
+        assert_eq!(outcome.runs_scored(), 1);
+    }
+
+    #[test]
+    fn test_play_outcome_groundout() {
+        let groundout = PlayOutcome::groundout();
+        assert_eq!(groundout.first(), BaseOutcome::ForceOut);
+        assert_eq!(groundout.second(), BaseOutcome::None);
+        assert_eq!(groundout.third(), BaseOutcome::None);
+        assert_eq!(groundout.home().runs, 0);
+        assert_eq!(groundout.outs(), 1);
+    }
+
+    #[test]
+    fn test_play_outcome_single() {
+        let baserunners = BaserunnerState::new()
+            .set_first(Some(BattingPosition::Second))
+            .set_third(Some(BattingPosition::Fourth));
+
+        let single = PlayOutcome::single(baserunners, BattingPosition::First);
+
+        assert_eq!(single.first(), BaseOutcome::Runner(BattingPosition::First));
+        assert_eq!(single.second(), BaseOutcome::Runner(BattingPosition::Second));
+        assert_eq!(single.third(), BaseOutcome::None);
+        assert_eq!(single.runs_scored(), 1); // Runner from third scores
+    }
+
+    #[test]
+    fn test_play_outcome_double() {
+        let baserunners = BaserunnerState::new()
+            .set_first(Some(BattingPosition::Second))
+            .set_second(Some(BattingPosition::Third));
+
+        let double = PlayOutcome::double(baserunners, BattingPosition::First);
+
+        assert_eq!(double.first(), BaseOutcome::None);
+        assert_eq!(double.second(), BaseOutcome::Runner(BattingPosition::First));
+        assert_eq!(double.third(), BaseOutcome::Runner(BattingPosition::Second));
+        assert_eq!(double.runs_scored(), 1); // Runner from second scores
+    }
+
+    #[test]
+    fn test_play_outcome_triple() {
+        let baserunners = BaserunnerState::new()
+            .set_first(Some(BattingPosition::Second))
+            .set_second(Some(BattingPosition::Third))
+            .set_third(Some(BattingPosition::Fourth));
+
+        let triple = PlayOutcome::triple(baserunners, BattingPosition::First);
+
+        assert_eq!(triple.first(), BaseOutcome::None);
+        assert_eq!(triple.second(), BaseOutcome::None);
+        assert_eq!(triple.third(), BaseOutcome::Runner(BattingPosition::First));
+        assert_eq!(triple.runs_scored(), 3); // All baserunners score
+    }
+
+    #[test]
+    fn test_play_outcome_homerun() {
+        let baserunners = BaserunnerState::new()
+            .set_first(Some(BattingPosition::Second))
+            .set_third(Some(BattingPosition::Fourth));
+
+        let homerun = PlayOutcome::homerun(baserunners, BattingPosition::First);
+
+        assert_eq!(homerun.first(), BaseOutcome::None);
+        assert_eq!(homerun.second(), BaseOutcome::None);
+        assert_eq!(homerun.third(), BaseOutcome::None);
+        assert_eq!(homerun.runs_scored(), 3); // Two baserunners + batter
+    }
+
+    #[test]
+    fn test_play_outcome_with_methods() {
+        let outcome = PlayOutcome::groundout();
+
+        let modified = outcome
+            .with_first(BaseOutcome::Runner(BattingPosition::First))
+            .with_second(BaseOutcome::TagOut)
+            .with_home(HomeOutcome::new_with_runs(2));
+
+        assert_eq!(modified.first(), BaseOutcome::Runner(BattingPosition::First));
+        assert_eq!(modified.second(), BaseOutcome::TagOut);
+        assert_eq!(modified.third(), BaseOutcome::None);
+        assert_eq!(modified.runs_scored(), 2);
+        assert_eq!(modified.outs(), 1); // TagOut on second
+    }
+
+    #[test]
+    fn test_play_outcome_baserunners() {
+        let outcome = PlayOutcome::new(
+            BaseOutcome::Runner(BattingPosition::First),
+            BaseOutcome::None,
+            BaseOutcome::Runner(BattingPosition::Third),
+            HomeOutcome::none(),
+        );
+
+        let baserunners = outcome.baserunners();
+        assert_eq!(baserunners.first(), Some(BattingPosition::First));
+        assert_eq!(baserunners.second(), None);
+        assert_eq!(baserunners.third(), Some(BattingPosition::Third));
+    }
 }

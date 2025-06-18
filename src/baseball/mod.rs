@@ -7,6 +7,7 @@ mod lineup;
 mod plate_appearance;
 
 pub use core::Runs;
+
 pub use baserunners::{Base, BaseOutcome, BaserunnerState, HomeOutcome, PlayOutcome};
 pub use game::{Game, GameResult};
 pub use lineup::{BattingPosition, PlayerPosition};

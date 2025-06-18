@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use tracing::debug;
 
 use crate::{
@@ -23,6 +25,12 @@ pub enum Outs {
     One,
     Two,
     Three, // Side is retired
+}
+
+impl Display for Outs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_number())
+    }
 }
 
 impl Outs {
@@ -104,7 +112,7 @@ impl HalfInning {
         self.baserunners
     }
 
-    fn increment_outs(self, n: u32) -> HalfInningResult {
+    fn increment_outs(self, n: u8) -> HalfInningResult {
         let mut outs = self.outs;
         for _ in 0..n {
             outs = outs.add_out();
@@ -400,7 +408,7 @@ mod tests {
         let mut half_inning = HalfInning::new(InningHalf::Bottom, batting_pos);
 
         info!("Initial state: No runners on base");
-        info!("{}",half_inning.summary().expect("half_inning should be valid"));
+        info!("{}", half_inning.summary().expect("half_inning should be valid"));
 
         // Start with the advance wrapper
         let mut advance = HalfInningResult::InProgress(half_inning);
