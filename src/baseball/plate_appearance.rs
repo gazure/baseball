@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::baseball::baserunners::PlayOutcome;
 
 #[derive(Default, Clone, Copy, Debug, PartialEq)]
@@ -7,6 +9,17 @@ pub enum Balls {
     One,
     Two,
     Three,
+}
+
+impl Balls {
+    pub fn as_number(&self) -> u8 {
+        match self {
+            Balls::Zero => 0,
+            Balls::One => 1,
+            Balls::Two => 2,
+            Balls::Three => 3,
+        }
+    }
 }
 
 impl std::fmt::Display for Balls {
@@ -26,6 +39,16 @@ pub enum Strikes {
     Zero,
     One,
     Two,
+}
+
+impl Strikes {
+    pub fn as_number(&self) -> u8 {
+        match self {
+            Strikes::Zero => 0,
+            Strikes::One => 1,
+            Strikes::Two => 2,
+        }
+    }
 }
 
 impl std::fmt::Display for Strikes {
@@ -135,14 +158,17 @@ pub enum PitchOutcome {
     HitByPitch,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum BallInPlay {
-    Out,
-    Single,
-    Double,
-    Triple,
-    HomeRun,
-    Error,
+impl Display for PitchOutcome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PitchOutcome::Ball => write!(f, "Ball"),
+            PitchOutcome::Strike => write!(f, "Strike"),
+            PitchOutcome::Foul => write!(f, "Foul"),
+            PitchOutcome::InPlay(play_outcome) => write!(f, "InPlay({})", play_outcome),
+            PitchOutcome::HomeRun => write!(f, "HomeRun"),
+            PitchOutcome::HitByPitch => write!(f, "HitByPitch"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -227,7 +253,7 @@ impl PlateAppearanceResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BaserunnerState, BattingPosition, baseball::baserunners::PlayBaseOutcome};
+    use crate::{BaserunnerState, BattingPosition, baseball::baserunners::BaseOutcome};
 
     #[test]
     fn test_count_new() {
@@ -343,7 +369,7 @@ mod tests {
         if let PlateAppearanceResult::InPlay(outcome) = pa {
             assert_eq!(
                 outcome.first(),
-                PlayBaseOutcome::Runner(BattingPosition::First)
+                BaseOutcome::Runner(BattingPosition::First)
             )
         } else {
             panic!("Expected single");

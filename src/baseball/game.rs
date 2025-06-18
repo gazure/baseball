@@ -1,9 +1,11 @@
+use std::fmt::Display;
+
 use crate::{
     Runs,
     baseball::{
         inning::{HalfInning, HalfInningResult, InningHalf},
         lineup::BattingPosition,
-        pa::PitchOutcome,
+        plate_appearance::PitchOutcome,
     },
 };
 
@@ -64,6 +66,12 @@ pub struct GameScore {
     home: Runs,
 }
 
+impl Display for GameScore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Away: {} - Home: {}", self.away, self.home)
+    }
+}
+
 impl GameScore {
     pub fn new() -> Self {
         GameScore { away: 0, home: 0 }
@@ -117,6 +125,12 @@ pub struct GameSummary {
     winner: GameWinner,
 }
 
+impl Display for GameSummary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Final Score: Away: {} - Home: {}", self.final_score.away, self.final_score.home)
+    }
+}
+
 impl GameSummary {
     pub fn new(final_score: GameScore, innings_played: InningNumber, winner: GameWinner) -> Self {
         GameSummary {
@@ -145,6 +159,7 @@ pub enum GameState {
     InningEnd(InningHalf),
     Complete,
 }
+
 impl GameState {
     pub fn is_bottom(&self) -> bool {
         matches!(self, GameState::Inning(InningHalf::Bottom))
@@ -163,6 +178,12 @@ pub struct Game {
     current_half_inning: HalfInning,
     away_batting_order: BattingPosition,
     home_batting_order: BattingPosition,
+}
+
+impl Display for Game {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} Score: {}", self.inning_description(), self.score())
+    }
 }
 
 impl Game {
@@ -368,6 +389,15 @@ pub enum GameResult {
     Complete(GameSummary),
 }
 
+impl Display for GameResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GameResult::InProgress(game) => write!(f, "{}", game),
+            GameResult::Complete(summary) => write!(f, "{}", summary),
+        }
+    }
+}
+
 impl GameResult {
     pub fn advance(self, outcome: PitchOutcome) -> GameResult {
         match self {
@@ -411,8 +441,10 @@ impl GameResult {
 
 #[cfg(test)]
 mod tests {
+    use tracing::{error, info};
+
     use super::*;
-    use crate::baseball::{baserunners::PlayOutcome, pa::PitchOutcome};
+    use crate::baseball::{baserunners::PlayOutcome, plate_appearance::PitchOutcome};
 
     #[test]
     fn test_inning_number_progression() {
@@ -531,5 +563,197 @@ mod tests {
 
         game.current_inning = InningNumber::Eighth;
         assert!(!game.should_end_game(0))
+    }
+
+    #[test]
+    fn demo_baseball_game() {
+        info!("Starting a new baseball game...");
+        let game = Game::new();
+
+        info!("Initial state: {}", game.inning_description());
+        info!("Score: Away {} - Home {}", game.score().away(), game.score().home());
+
+        // Simulate first inning
+        info!("⚾ Simulating game action...");
+
+        // Start with the advance wrapper
+        let mut advance = GameResult::InProgress(game);
+
+        // Top 1st: Quick three outs
+        info!("🔝 Top 1st Inning:");
+        for batter in 1..=3 {
+            advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
+            if let Some(_game) = advance.game_ref() {
+                info!("  Batter #{}: Out", batter);
+            } else {
+                info!("  Game ended unexpectedly!");
+                return;
+            }
+        }
+
+        if let Some(game) = advance.game_ref() {
+            info!("  Half inning complete!");
+            info!("  Current state: {}", game.inning_description());
+        }
+
+        // Bottom 1st: Home team scores
+        info!("🔽 Bottom 1st Inning:");
+
+        // First batter: Home run
+        advance = advance.advance(PitchOutcome::HomeRun);
+        if advance.game_ref().is_some() {
+            info!("  Batter #1: HOME RUN! 🎉");
+            // Score will be updated when half inning completes
+        } else {
+            info!("  Game ended unexpectedly!");
+            return;
+        }
+
+        // Next two batters: Outs
+        advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
+        if advance.game_ref().is_some() {
+            info!("  Batter #2: Out");
+        } else {
+            return;
+        }
+
+        advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
+        if advance.game_ref().is_some() {
+            info!("  Batter #3: Out");
+        } else {
+            return;
+        }
+
+        advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
+        if advance.game_ref().is_some() {
+            info!("  Batter #4: Out");
+            info!("  Half inning complete!");
+        } else {
+            return;
+        }
+
+        if let Some(_game) = advance.game_ref() {
+            info!("📊 After 1 inning:");
+            info!("  {}", _game.inning_description());
+            info!("  Score: Away {} - Home {}", _game.score().away(), _game.score().home());
+        }
+
+        // Fast forward through several innings
+        info!("⏭️  Fast forwarding through innings 2-8...");
+
+        while let Some(game) = advance.game_ref() {
+            if game.current_inning().as_number() >= 9 {
+                break;
+            }
+
+            info!(
+                "  Starting inning {}: {}",
+                game.current_inning().as_number(),
+                game.inning_description()
+            );
+
+            // Simulate quick half innings (3 outs each)
+            for out_num in 1..=6 {
+                // 3 outs per half inning, 2 half innings
+                advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
+                if let Some(game) = advance.game_ref() {
+                    if out_num % 3 == 0 {
+                        info!("    Half inning complete: {}", game.inning_description());
+                        info!("    Score: Away {} - Home {}", game.score().away(), game.score().home());
+                    }
+                } else if let Some(summary) = advance.summary_ref() {
+                    info!("Game completed early!");
+                    info!("Game ended after {} outs in fast forward", out_num);
+                    info!(
+                        "Final Score: Away {} - Home {}",
+                        summary.final_score().away(),
+                        summary.final_score().home()
+                    );
+                    info!("Winner: {:?}", summary.winner());
+                    return;
+                }
+            }
+        }
+
+        if let Some(game) = advance.game_ref() {
+            info!("  Reached the 9th inning!");
+            info!("  {}", game.inning_description());
+            info!("  Score: Away {} - Home {}", game.score().away(), game.score().home());
+        }
+
+        // 9th inning drama
+        info!("🎯 9th Inning - Game on the line!");
+
+        // Top 9th: Away team scores 2 runs
+        info!("🔝 Top 9th:");
+        advance = advance.advance(PitchOutcome::HomeRun);
+        if advance.game_ref().is_some() {
+            info!("  Batter #1: HOME RUN!");
+        } else {
+            return;
+        }
+
+        advance = advance.advance(PitchOutcome::HomeRun);
+        if advance.game_ref().is_some() {
+            info!("  Batter #2: ANOTHER HOME RUN!");
+        } else {
+            return;
+        }
+
+        // Need two more outs to complete top 9th
+        advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
+        if advance.game_ref().is_some() {
+            info!("  Batter #3: Out");
+        } else {
+            return;
+        }
+
+        advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
+        if advance.game_ref().is_some() {
+            info!("  Batter #4: Out");
+        } else {
+            return;
+        }
+
+        advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::groundout()));
+        if let Some(game) = advance.game_ref() {
+            info!("  Batter #5: Out - Top 9th complete!");
+            info!("  Score: Away {} - Home {}", game.score().away(), game.score().home());
+        } else {
+            return;
+        }
+
+        // Bottom 9th: Walk-off opportunity
+        info!("🔽 Bottom 9th - Walk-off situation!");
+        let game = advance.clone().game().unwrap();
+
+        advance = advance.advance(PitchOutcome::InPlay(PlayOutcome::single(
+            game.current_half_inning().baserunners(),
+            game.current_half_inning().current_batter(),
+        )));
+
+        if let Some(game) = advance.game_ref() {
+            info!("  Batter #1: Single!");
+            info!("  Score: Away {} - Home {}", game.score().away(), game.score().home());
+        } else {
+            return;
+        }
+
+        // Home team walk-off home run
+        advance = advance.advance(PitchOutcome::HomeRun);
+        if let Some(game) = advance.game_ref() {
+            error!("  Batter #1: WALK-OFF HOME RUN! 🎆, but game did not end");
+            info!("  Score: Away {} - Home {}", game.score().away(), game.score().home());
+            info!("  Type-safe baseball game simulation complete! ⚾");
+        } else if let Some(summary) = advance.summary_ref() {
+            info!("  Batter #1: WALK-OFF HOME RUN! GAME OVER! 🎆");
+            info!("🏁 FINAL SCORE:");
+            info!("  Away: {}", summary.final_score().away());
+            info!("  Home: {}", summary.final_score().home());
+            info!("  Winner: {:?} team!", summary.winner());
+            info!("  Innings played: {}", summary.innings_played().as_number());
+            info!("  Type-safe baseball game simulation complete! ⚾");
+            return;
+        }
     }
 }

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum BattingPosition {
     #[default]
@@ -10,6 +12,22 @@ pub enum BattingPosition {
     Seventh,
     Eighth,
     Ninth,
+}
+
+impl Display for BattingPosition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BattingPosition::First => write!(f, "First"),
+            BattingPosition::Second => write!(f, "Second"),
+            BattingPosition::Third => write!(f, "Third"),
+            BattingPosition::Fourth => write!(f, "Fourth"),
+            BattingPosition::Fifth => write!(f, "Fifth"),
+            BattingPosition::Sixth => write!(f, "Sixth"),
+            BattingPosition::Seventh => write!(f, "Seventh"),
+            BattingPosition::Eighth => write!(f, "Eighth"),
+            BattingPosition::Ninth => write!(f, "Ninth"),
+        }
+    }
 }
 
 impl BattingPosition {
@@ -39,5 +57,96 @@ impl BattingPosition {
             BattingPosition::Eighth => 8,
             BattingPosition::Ninth => 9,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum PlayerPosition {
+    Pitcher,
+    Catcher,
+    FirstBase,
+    SecondBase,
+    ThirdBase,
+    Shortstop,
+    LeftField,
+    CenterField,
+    RightField,
+    DesignatedHitter,
+}
+
+impl PlayerPosition {
+    pub fn abbreviation(self) -> String {
+        match self {
+            PlayerPosition::Pitcher => "P".to_string(),
+            PlayerPosition::Catcher => "C".to_string(),
+            PlayerPosition::FirstBase => "1B".to_string(),
+            PlayerPosition::SecondBase => "2B".to_string(),
+            PlayerPosition::ThirdBase => "3B".to_string(),
+            PlayerPosition::Shortstop => "SS".to_string(),
+            PlayerPosition::LeftField => "LF".to_string(),
+            PlayerPosition::CenterField => "CF".to_string(),
+            PlayerPosition::RightField => "RF".to_string(),
+            PlayerPosition::DesignatedHitter => "DH".to_string(),
+        }
+    }
+}
+
+impl Display for PlayerPosition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PlayerPosition::Pitcher => write!(f, "Pitcher"),
+            PlayerPosition::Catcher => write!(f, "Catcher"),
+            PlayerPosition::FirstBase => write!(f, "First Base"),
+            PlayerPosition::SecondBase => write!(f, "Second Base"),
+            PlayerPosition::ThirdBase => write!(f, "Third Base"),
+            PlayerPosition::Shortstop => write!(f, "Shortstop"),
+            PlayerPosition::LeftField => write!(f, "Left Field"),
+            PlayerPosition::CenterField => write!(f, "Center Field"),
+            PlayerPosition::RightField => write!(f, "Right Field"),
+            PlayerPosition::DesignatedHitter => write!(f, "Batter"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use tracing::info;
+
+    use super::*;
+
+    #[test]
+    fn test_next() {
+        assert_eq!(BattingPosition::First.next(), BattingPosition::Second);
+        assert_eq!(BattingPosition::Second.next(), BattingPosition::Third);
+        assert_eq!(BattingPosition::Third.next(), BattingPosition::Fourth);
+        assert_eq!(BattingPosition::Fourth.next(), BattingPosition::Fifth);
+        assert_eq!(BattingPosition::Fifth.next(), BattingPosition::Sixth);
+        assert_eq!(BattingPosition::Sixth.next(), BattingPosition::Seventh);
+        assert_eq!(BattingPosition::Seventh.next(), BattingPosition::Eighth);
+        assert_eq!(BattingPosition::Eighth.next(), BattingPosition::Ninth);
+        assert_eq!(BattingPosition::Ninth.next(), BattingPosition::First);
+    }
+
+    #[test]
+    fn demo_batting_position_api() {
+        info!("Creating batting positions - no Result unwrapping needed!");
+
+        // Clean enum-based creation
+        let leadoff = BattingPosition::First;
+        let cleanup = BattingPosition::Fourth;
+        let nine_hole = BattingPosition::Ninth;
+
+        info!("  Leadoff hitter: #{}", leadoff.as_number());
+        info!("  Cleanup hitter: #{}", cleanup.as_number());
+        info!("  Nine hole: #{}", nine_hole.as_number());
+
+        info!("Batting order progression:");
+        let mut current = BattingPosition::Seventh;
+        for i in 1..=5 {
+            info!("  Batter {}: #{}", i, current.as_number());
+            current = current.next();
+        }
+
+        info!("No more .unwrap() calls needed! 🎉");
     }
 }
