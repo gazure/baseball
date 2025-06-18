@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use tracing::debug;
 
 use crate::{
@@ -24,6 +26,13 @@ pub enum Outs {
     Two,
     Three, // Side is retired
 }
+
+impl Display for Outs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_number())
+    }
+}
+
 
 impl Outs {
     pub fn add_out(self) -> Outs {
@@ -104,7 +113,7 @@ impl HalfInning {
         self.baserunners
     }
 
-    fn increment_outs(self, n: u32) -> HalfInningResult {
+    fn increment_outs(self, n: u8) -> HalfInningResult {
         let mut outs = self.outs;
         for _ in 0..n {
             outs = outs.add_out();
