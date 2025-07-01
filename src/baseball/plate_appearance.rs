@@ -86,65 +86,59 @@ impl Count {
         self.strikes
     }
 
-    pub fn advance(self, outcome: PitchOutcome) -> CountAdvance {
+    pub fn with_balls(self, balls: Balls) -> Self {
+        Count { balls, strikes: self.strikes }
+    }
+
+    pub fn with_strikes(self, strikes: Strikes) -> Self {
+        Count { balls: self.balls, strikes }
+    }
+
+    pub fn advance(self, outcome: PitchOutcome) -> CountResult {
         match outcome {
             PitchOutcome::Ball => self.advance_ball(),
             PitchOutcome::Strike => self.advance_strike(),
             PitchOutcome::Foul => self.advance_foul(),
-            _ => CountAdvance::in_progress(self),
+            _ => self.into(),
         }
     }
 
-    fn advance_ball(self) -> CountAdvance {
+    fn advance_ball(self) -> CountResult {
         match self.balls {
-            Balls::Zero => CountAdvance::in_progress(Count::new(Balls::One, self.strikes)),
-            Balls::One => CountAdvance::in_progress(Count::new(Balls::Two, self.strikes)),
-            Balls::Two => CountAdvance::in_progress(Count::new(Balls::Three, self.strikes)),
-            Balls::Three => CountAdvance::Walk,
+            Balls::Zero => self.with_balls(Balls::One).into(),
+            Balls::One => self.with_balls(Balls::Two).into(),
+            Balls::Two => self.with_balls(Balls::Three).into(),
+            Balls::Three => CountResult::Walk,
         }
     }
 
-    fn advance_strike(self) -> CountAdvance {
+    fn advance_strike(self) -> CountResult {
         match self.strikes {
-            Strikes::Zero => CountAdvance::in_progress(Count::new(self.balls, Strikes::One)),
-            Strikes::One => CountAdvance::in_progress(Count::new(self.balls, Strikes::Two)),
-            Strikes::Two => CountAdvance::Strikeout,
+            Strikes::Zero => self.with_strikes(Strikes::One).into(),
+            Strikes::One => self.with_strikes(Strikes::Two).into(),
+            Strikes::Two => CountResult::Strikeout,
         }
     }
 
-    fn advance_foul(self) -> CountAdvance {
+    fn advance_foul(self) -> CountResult {
         match self.strikes {
-            Strikes::Zero => CountAdvance::in_progress(Count::new(self.balls, Strikes::One)),
-            Strikes::One => CountAdvance::in_progress(Count::new(self.balls, Strikes::Two)),
-            Strikes::Two => CountAdvance::in_progress(self), // Foul with 2 strikes doesn't advance
-        }
+            Strikes::Zero => self.with_strikes(Strikes::One),
+            Strikes::One => self.with_strikes(Strikes::Two),
+            Strikes::Two => self,
+        }.into()
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum CountAdvance {
+pub enum CountResult {
     InProgress(Count),
     Strikeout,
     Walk,
 }
 
-impl CountAdvance {
-    pub fn advance(self, outcome: PitchOutcome) -> CountAdvance {
-        match self {
-            CountAdvance::InProgress(count) => count.advance(outcome),
-            _ => self, // Already complete (strikeout/walk), ignore the pitch
-        }
-    }
-
-    pub fn in_progress(count: Count) -> Self {
-        CountAdvance::InProgress(count)
-    }
-
-    pub fn count(self) -> Option<Count> {
-        match self {
-            CountAdvance::InProgress(count) => Some(count),
-            _ => None,
-        }
+impl From<Count> for CountResult {
+    fn from(count: Count) -> Self {
+        CountResult::InProgress(count)
     }
 }
 
@@ -191,11 +185,11 @@ impl PlateAppearance {
                 let count_advance = self.count.advance(outcome);
 
                 match count_advance {
-                    CountAdvance::InProgress(count) => {
+                    CountResult::InProgress(count) => {
                         PlateAppearanceResult::InProgress(PlateAppearance::with_count(count))
                     }
-                    CountAdvance::Strikeout => PlateAppearanceResult::Strikeout,
-                    CountAdvance::Walk => PlateAppearanceResult::Walk,
+                    CountResult::Strikeout => PlateAppearanceResult::Strikeout,
+                    CountResult::Walk => PlateAppearanceResult::Walk,
                 }
             }
             PitchOutcome::InPlay(outcome) => PlateAppearanceResult::InPlay(outcome),

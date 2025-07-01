@@ -1,8 +1,11 @@
 use std::f32::consts::PI;
 
-use bevy::prelude::*;
+use bevy::{ecs::spawn::SpawnIter, prelude::*};
 
 use crate::baseball::*;
+
+const FIELD_BROWN: Color = Color::srgb(0.6, 0.4, 0.2);
+const MOUND_BROWN: Color = Color::srgb(0.7, 0.5, 0.3);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BaseballPlugin;
@@ -70,6 +73,12 @@ pub enum HitType {
 pub struct Ball;
 
 #[derive(Component)]
+pub struct PitcherMound;
+
+#[derive(Component)]
+pub struct HomePlate;
+
+#[derive(Component)]
 pub struct Player {
     pub position: PlayerPosition,
     pub target_position: Vec3,
@@ -104,48 +113,53 @@ pub fn setup_field(
 
     // Create field background
     commands.spawn((
-        Mesh2d(meshes.add(Rectangle::new(field_size * 2.0, field_size * 30.0))),
+        Mesh2d(meshes.add(Rectangle::new(field_size * 50.0, field_size * 30.0))),
         MeshMaterial2d(materials.add(ColorMaterial::from(Color::srgb(0.2, 0.6, 0.2)))),
         Transform::from_xyz(0.0, 0.0, 0.0),
     ));
 
-    // Create diamond/infield
-    let infield_size = field_size * 0.6;
-    commands.spawn((
-        Mesh2d(meshes.add(Rectangle::new(infield_size, infield_size))),
-        MeshMaterial2d(materials.add(ColorMaterial::from(Color::srgb(0.6, 0.4, 0.2)))),
-        Transform::from_xyz(0.0, -infield_size * 0.25, 1.0).with_rotation(Quat::from_rotation_z(PI / 4.0)),
-    ));
-
-    // Create pitcher's mound
-    commands.spawn((
-        Mesh2d(meshes.add(Circle::new(15.0))),
-        MeshMaterial2d(materials.add(ColorMaterial::from(Color::srgb(0.7, 0.5, 0.3)))),
-        Transform::from_xyz(0.0, -60.0, 2.0),
-    ));
-
-    // Create home plate
-    commands.spawn((
-        Mesh2d(meshes.add(Rectangle::new(8.0, 8.0))),
-        MeshMaterial2d(materials.add(ColorMaterial::from(Color::WHITE))),
-        Transform::from_xyz(0.0, -150.0, 2.0),
-    ));
-
-    // Create bases
     let base_positions = [
-        (90.0, -60.0),  // First base
-        (0.0, 30.0),    // Second base
-        (-90.0, -60.0), // Third base
+        (185.0, -185.0),  // First base
+        (185.0, 185.0),    // Second base
+        (-185.0, 185.0),  // Third base
     ];
 
-    for (x, y) in base_positions.iter() {
-        commands.spawn((
-            Mesh2d(meshes.add(Rectangle::new(12.0, 12.0))),
-            MeshMaterial2d(materials.add(ColorMaterial::from(Color::WHITE))),
-            Transform::from_xyz(*x, *y, 2.0),
-            BaseMarker,
-        ));
-    }
+    let base_mesh = meshes.add(Rectangle::new(12.0, 12.0));
+    let base_material = materials.add(ColorMaterial::from(Color::WHITE));
+
+    let infield_size = field_size * 0.6;
+    commands.spawn((
+        Mesh2d(meshes.add(Rectangle::from_size(Vec2::splat(field_size)))),
+        MeshMaterial2d(materials.add(ColorMaterial::from(FIELD_BROWN))),
+        Transform::from_xyz(0.0, -infield_size / 2.0, 1.0).with_rotation(Quat::from_rotation_z(PI / 4.0)),
+        Children::spawn((
+            Spawn((
+                Mesh2d(meshes.add(Circle::new(25.0))),
+                MeshMaterial2d(materials.add(ColorMaterial::from(FIELD_BROWN))),
+                Transform::from_xyz(-190.0, -190.0, 1.0),
+            )),
+            Spawn((
+                Mesh2d(meshes.add(Circle::new(15.0))),
+                MeshMaterial2d(materials.add(ColorMaterial::from(MOUND_BROWN))),
+                Transform::from_xyz(-10.0, -10.0, 2.0),
+                PitcherMound,
+            )),
+            Spawn((
+                Mesh2d(meshes.add(Rectangle::new(8.0, 8.0))),
+                MeshMaterial2d(materials.add(ColorMaterial::from(Color::WHITE))),
+                Transform::from_xyz(-190.0, -190.0, 2.0),
+                HomePlate,
+            )),
+            SpawnIter(base_positions.into_iter().map(move |(x, y)| {
+                (
+                    Mesh2d(base_mesh.clone()),
+                    MeshMaterial2d(base_material.clone()),
+                    Transform::from_xyz(x, y, 2.0),
+                    BaseMarker,
+                )
+            })),
+        )),
+    ));
 
     // Create ball
     commands.spawn((

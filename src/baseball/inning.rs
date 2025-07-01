@@ -27,6 +27,31 @@ pub enum Outs {
     Three, // Side is retired
 }
 
+impl std::ops::Add<Outs> for Outs {
+    type Output = Outs;
+
+    fn add(self, rhs: Outs) -> Self::Output {
+        match self {
+            Outs::Zero => match rhs {
+                Outs::Zero => Outs::Zero,
+                Outs::One => Outs::One,
+                Outs::Two => Outs::Two,
+                Outs::Three => Outs::Three,
+            },
+            Outs::One => match rhs {
+                Outs::Zero => Outs::One,
+                Outs::One => Outs::Two,
+                Outs::Two | Outs::Three => Outs::Three,
+            },
+            Outs::Two => match rhs {
+                Outs::Zero => Outs::Two,
+                Outs::One | Outs::Two | Outs::Three => Outs::Three,
+            },
+            Outs::Three => Outs::Three,
+        }
+    }
+}
+
 impl Display for Outs {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_number())
@@ -41,6 +66,10 @@ impl Outs {
             Outs::Two => Outs::Three,
             Outs::Three => Outs::Three, // Stay at three
         }
+    }
+
+    pub fn has_outs(self) -> bool {
+        self != Outs::Zero
     }
 
     pub fn as_number(self) -> Runs {
@@ -112,15 +141,21 @@ impl HalfInning {
         self.baserunners
     }
 
-    fn increment_outs(self, n: u8) -> HalfInningResult {
-        let mut outs = self.outs;
-        for _ in 0..n {
-            outs = outs.add_out();
+    fn increment_outs(self, n: Outs) -> HalfInningResult {
+        let outs = match (n, self.outs) {
+            (Outs::Zero, o) => o,
+            (o, Outs::Zero) => o,
+            (Outs::One, Outs::One) => Outs::Two,
+            (Outs::One, Outs::Two)
+            | (Outs::Two, Outs::One)
+            | (Outs::Two, Outs::Two)
+            | (Outs::Three, _)
+            | (_, Outs::Three) => Outs::Three,
+        };
 
-            if matches!(outs, Outs::Three) {
-                debug!("Inning over, runs scored: {}", self.runs_scored);
-                return HalfInningResult::Complete(HalfInningSummary::new(self.runs_scored));
-            }
+        if matches!(outs, Outs::Three) {
+            debug!("Inning over, runs scored: {}", self.runs_scored);
+            return HalfInningResult::Complete(HalfInningSummary::new(self.runs_scored));
         }
 
         self.set_outs(outs).advance_batter()
@@ -130,7 +165,7 @@ impl HalfInning {
         let pa = self.current_pa.advance(outcome);
 
         match pa {
-            PlateAppearanceResult::Strikeout => self.increment_outs(1),
+            PlateAppearanceResult::Strikeout => self.increment_outs(Outs::One),
             PlateAppearanceResult::InPlay(outcome) => {
                 let outs = outcome.outs();
                 let baserunners = outcome.baserunners();
